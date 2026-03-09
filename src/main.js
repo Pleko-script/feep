@@ -2,35 +2,38 @@ const MODES = {
   pomodoro: {
     label: "Pomodoro",
     caption: "Focus session",
-    seconds: 25 * 60,
     message: "Zeit zum Fokussieren.",
   },
   shortBreak: {
     label: "Short Break",
     caption: "Quick recharge",
-    seconds: 5 * 60,
     message: "Kurz durchatmen und Schultern lockern.",
   },
   longBreak: {
     label: "Long Break",
     caption: "Deep reset",
-    seconds: 15 * 60,
-    message: "Große Pause verdient. Einmal richtig abschalten.",
+    message: "Grosse Pause verdient. Einmal richtig abschalten.",
   },
+};
+
+const DEFAULT_SETTINGS = {
+  pomodoro: 25,
+  shortBreak: 5,
+  longBreak: 15,
 };
 
 const STORAGE_KEY = "pomofocus-state-v1";
 const ANALYTICS_KEY = "pomofocus-analytics-v1";
+const SETTINGS_KEY = "pomofocus-settings-v1";
 
 const state = {
   mode: "pomodoro",
-  remainingSeconds: MODES.pomodoro.seconds,
+  remainingSeconds: DEFAULT_SETTINGS.pomodoro * 60,
   isRunning: false,
   completedPomodoros: 0,
   completedDate: getTodayKey(),
   intervalId: null,
   targetTime: null,
-  statusCopy: MODES.pomodoro.message,
 };
 
 const reportState = {
@@ -38,8 +41,13 @@ const reportState = {
   offset: 0,
 };
 
+const uiState = {
+  openModal: null,
+};
+
 const elements = {};
 let analytics = createEmptyAnalytics();
+let settings = { ...DEFAULT_SETTINGS };
 
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -51,14 +59,7 @@ function formatTime(totalSeconds) {
 
 function getTodayKey() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getModeSeconds(mode) {
-  return MODES[mode]?.seconds ?? MODES.pomodoro.seconds;
+  return toDateKey(now);
 }
 
 function toDateKey(date) {
@@ -100,6 +101,20 @@ function startOfMonth(date) {
 
 function startOfYear(date) {
   return new Date(date.getFullYear(), 0, 1);
+}
+
+function clampNumber(value, fallback, min, max) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, Math.round(parsed)));
+}
+
+function getModeSeconds(mode) {
+  return (settings[mode] ?? DEFAULT_SETTINGS[mode]) * 60;
 }
 
 function createEmptyAnalytics() {
@@ -196,8 +211,8 @@ function getTotalFocusHours() {
 
 function formatSummaryHours(hours) {
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: hours < 10 ? 1 : 0,
-    maximumFractionDigits: hours < 10 ? 1 : 1,
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   }).format(hours);
 }
 
@@ -208,15 +223,15 @@ function formatAxisValue(value) {
   }).format(value);
 }
 
-function formatDateLabel(date, config) {
-  if (config === "week") {
+function formatDateLabel(date, range) {
+  if (range === "week") {
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
     }).format(date);
   }
 
-  if (config === "month") {
+  if (range === "month") {
     return String(date.getDate());
   }
 
@@ -347,6 +362,10 @@ function getChartScale(maxValue) {
 }
 
 function renderReport() {
+  if (!elements.chartGrid) {
+    return;
+  }
+
   const dataset = getChartDataset();
   const peakValue = dataset.points.reduce((max, point) => Math.max(max, point.valueHours), 0);
   const scaleMax = getChartScale(peakValue);
@@ -393,6 +412,60 @@ function renderReport() {
   elements.chartGrid.innerHTML = scaleMarkup + barsMarkup;
 }
 
+function saveSettings() {
+  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const rawSettings = window.localStorage.getItem(SETTINGS_KEY);
+
+  if (!rawSettings) {
+    settings = { ...DEFAULT_SETTINGS };
+    saveSettings();
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(rawSettings);
+    settings = {
+      pomodoro: clampNumber(parsed.pomodoro, DEFAULT_SETTINGS.pomodoro, 1, 180),
+      shortBreak: clampNumber(parsed.shortBreak, DEFAULT_SETTINGS.shortBreak, 1, 60),
+      longBreak: clampNumber(parsed.longBreak, DEFAULT_SETTINGS.longBreak, 1, 120),
+    };
+  } catch {
+    settings = { ...DEFAULT_SETTINGS };
+  }
+
+  saveSettings();
+}
+
+function syncSettingsForm() {
+  if (!elements.settingsPomodoro) {
+    return;
+  }
+
+  elements.settingsPomodoro.value = String(settings.pomodoro);
+  elements.settingsShortBreak.value = String(settings.shortBreak);
+  elements.settingsLongBreak.value = String(settings.longBreak);
+}
+
+function applySettings(nextSettings) {
+  settings = {
+    pomodoro: clampNumber(nextSettings.pomodoro, DEFAULT_SETTINGS.pomodoro, 1, 180),
+    shortBreak: clampNumber(nextSettings.shortBreak, DEFAULT_SETTINGS.shortBreak, 1, 60),
+    longBreak: clampNumber(nextSettings.longBreak, DEFAULT_SETTINGS.longBreak, 1, 120),
+  };
+
+  stopInterval();
+  state.isRunning = false;
+  state.targetTime = null;
+  state.remainingSeconds = getModeSeconds(state.mode);
+  saveSettings();
+  syncSettingsForm();
+  render();
+  saveState();
+}
+
 function syncDailyCount() {
   const today = getTodayKey();
 
@@ -403,10 +476,6 @@ function syncDailyCount() {
   state.completedDate = today;
   state.completedPomodoros = 0;
   markAccess(today);
-
-  if (elements.chartGrid) {
-    renderReport();
-  }
 }
 
 function saveState() {
@@ -417,7 +486,6 @@ function saveState() {
     completedPomodoros: state.completedPomodoros,
     completedDate: state.completedDate,
     targetTime: state.targetTime,
-    statusCopy: state.statusCopy,
   };
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
@@ -443,20 +511,16 @@ function hydrateState() {
   const rawState = window.localStorage.getItem(STORAGE_KEY);
 
   if (!rawState) {
+    state.remainingSeconds = getModeSeconds(state.mode);
     render();
-    renderReport();
     return;
   }
 
   try {
     const savedState = JSON.parse(rawState);
-    const mode = MODES[savedState.mode] ? savedState.mode : "pomodoro";
-    const totalSeconds = getModeSeconds(mode);
-
-    state.mode = mode;
+    state.mode = MODES[savedState.mode] ? savedState.mode : "pomodoro";
     state.completedDate = savedState.completedDate || getTodayKey();
     state.completedPomodoros = Number(savedState.completedPomodoros) || 0;
-    state.statusCopy = typeof savedState.statusCopy === "string" ? savedState.statusCopy : MODES[mode].message;
 
     syncDailyCount();
 
@@ -470,62 +534,44 @@ function hydrateState() {
       } else {
         const completedDateKey = toDateKey(new Date(savedState.targetTime));
 
-        if (mode === "pomodoro") {
-          recordFocusSession(MODES.pomodoro.seconds, completedDateKey);
-          const completedToday = completedDateKey === getTodayKey();
-          const completedInCycle = completedToday ? state.completedPomodoros + 1 : 1;
+        if (savedState.mode === "pomodoro") {
+          recordFocusSession(getModeSeconds("pomodoro"), completedDateKey);
+          const baseCount = completedDateKey === getTodayKey() ? state.completedPomodoros : 0;
+          const completedInCycle = baseCount + 1;
 
-          if (completedToday) {
+          if (completedDateKey === getTodayKey()) {
             state.completedPomodoros = completedInCycle;
           }
 
           state.mode = completedInCycle % 4 === 0 ? "longBreak" : "shortBreak";
           state.remainingSeconds = getModeSeconds(state.mode);
-          state.statusCopy = "Die letzte Fokus-Session ist im Hintergrund abgelaufen.";
         } else {
           state.mode = "pomodoro";
-          state.remainingSeconds = MODES.pomodoro.seconds;
-          state.statusCopy = "Die letzte Pause ist im Hintergrund abgelaufen.";
+          state.remainingSeconds = getModeSeconds("pomodoro");
         }
 
         state.targetTime = null;
         state.isRunning = false;
       }
     } else {
-      const remainingSeconds = Number(savedState.remainingSeconds);
-      state.remainingSeconds = Number.isFinite(remainingSeconds)
-        ? Math.min(totalSeconds, Math.max(1, Math.round(remainingSeconds)))
-        : totalSeconds;
+      state.targetTime = null;
+      state.isRunning = false;
+      state.remainingSeconds = Math.min(
+        getModeSeconds(state.mode),
+        clampNumber(savedState.remainingSeconds, getModeSeconds(state.mode), 1, 60 * 60 * 8),
+      );
     }
   } catch {
     state.mode = "pomodoro";
-    state.remainingSeconds = MODES.pomodoro.seconds;
+    state.remainingSeconds = getModeSeconds("pomodoro");
     state.isRunning = false;
     state.completedPomodoros = 0;
     state.completedDate = getTodayKey();
     state.targetTime = null;
-    state.statusCopy = MODES.pomodoro.message;
   }
 
   render();
-  renderReport();
   saveState();
-}
-
-function getCurrentSessionNumber() {
-  if (state.mode === "pomodoro") {
-    return state.completedPomodoros + 1;
-  }
-
-  return Math.max(1, state.completedPomodoros);
-}
-
-function getNextLabel() {
-  if (state.mode === "pomodoro") {
-    return (state.completedPomodoros + 1) % 4 === 0 ? "Long Break" : "Short Break";
-  }
-
-  return "Pomodoro";
 }
 
 function stopInterval() {
@@ -544,34 +590,18 @@ function syncRemainingTime() {
   state.remainingSeconds = secondsLeft;
 }
 
-function updateCycleTrack() {
-  const dots = document.querySelectorAll(".cycle-dot");
-  const completedInCycle = state.completedPomodoros % 4;
-  const currentIndex = state.mode === "pomodoro" ? completedInCycle + 1 : 0;
-
-  dots.forEach((dot, index) => {
-    const dotIndex = index + 1;
-    dot.classList.toggle("is-complete", dotIndex <= completedInCycle);
-    dot.classList.toggle("is-current", dotIndex === currentIndex);
-  });
-}
-
 function render() {
   syncDailyCount();
   syncRemainingTime();
 
   const activeMode = MODES[state.mode];
-  const progress = ((getModeSeconds(state.mode) - state.remainingSeconds) / getModeSeconds(state.mode)) * 100;
+  const totalSeconds = getModeSeconds(state.mode);
+  const progress = ((totalSeconds - state.remainingSeconds) / totalSeconds) * 100;
 
   elements.timerDisplay.textContent = formatTime(state.remainingSeconds);
   elements.modeCaption.textContent = activeMode.caption;
   elements.startPauseBtn.textContent = state.isRunning ? "Pause" : "Start";
-  elements.sessionCount.textContent = `#${getCurrentSessionNumber()}`;
-  elements.completedCount.textContent = state.completedPomodoros.toString();
-  elements.nextLabel.textContent = getNextLabel();
-  elements.statusCopy.textContent = state.statusCopy;
   elements.progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-
   document.title = `${formatTime(state.remainingSeconds)} · ${activeMode.label}`;
 
   elements.modeTabs.forEach((tab) => {
@@ -580,16 +610,15 @@ function render() {
     tab.setAttribute("aria-selected", isActive.toString());
   });
 
-  updateCycleTrack();
+  renderReport();
 }
 
-function switchMode(mode, statusCopy = MODES[mode].message) {
+function switchMode(mode) {
   stopInterval();
   state.mode = mode;
-  state.remainingSeconds = MODES[mode].seconds;
+  state.remainingSeconds = getModeSeconds(mode);
   state.targetTime = null;
   state.isRunning = false;
-  state.statusCopy = statusCopy;
   render();
   saveState();
 }
@@ -603,17 +632,17 @@ function completeSession() {
   state.remainingSeconds = 0;
 
   if (completedMode === "pomodoro") {
-    recordFocusSession(MODES.pomodoro.seconds);
-    renderReport();
+    recordFocusSession(getModeSeconds("pomodoro"));
     state.completedPomodoros += 1;
+
     const nextMode = state.completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
     showNotification("Pomodoro abgeschlossen", `Wechsel zu ${MODES[nextMode].label}.`);
-    switchMode(nextMode, "Fokusblock erledigt. Gonn dir kurz Abstand.");
+    switchMode(nextMode);
     return;
   }
 
   showNotification("Pause beendet", "Der naechste Fokusblock ist bereit.");
-  switchMode("pomodoro", "Pause vorbei. Der nächste Fokusblock wartet.");
+  switchMode("pomodoro");
 }
 
 function tick() {
@@ -633,7 +662,6 @@ function startTimer() {
   }
 
   state.isRunning = true;
-  state.statusCopy = `Aktiv: ${MODES[state.mode].message}`;
   state.targetTime = Date.now() + state.remainingSeconds * 1000;
   ensureNotificationPermission();
   state.intervalId = window.setInterval(tick, 250);
@@ -650,7 +678,6 @@ function pauseTimer() {
   stopInterval();
   state.targetTime = null;
   state.isRunning = false;
-  state.statusCopy = `Pausiert: ${MODES[state.mode].message}`;
   render();
   saveState();
 }
@@ -665,25 +692,7 @@ function toggleTimer() {
 }
 
 function resetTimer() {
-  switchMode(state.mode, `${MODES[state.mode].label} zurückgesetzt.`);
-}
-
-function handleKeydown(event) {
-  const target = event.target;
-  const isEditable = target instanceof HTMLElement && target.matches("input, textarea, select, [contenteditable='true']");
-
-  if (isEditable) {
-    return;
-  }
-
-  if (event.code === "Space") {
-    event.preventDefault();
-    toggleTimer();
-  }
-
-  if (event.key.toLowerCase() === "r") {
-    resetTimer();
-  }
+  switchMode(state.mode);
 }
 
 function setReportRange(range) {
@@ -697,17 +706,78 @@ function shiftReportPeriod(amount) {
   renderReport();
 }
 
+function openModal(name) {
+  uiState.openModal = name;
+  elements.reportModal.hidden = name !== "report";
+  elements.settingsModal.hidden = name !== "settings";
+
+  if (name === "report") {
+    renderReport();
+  }
+
+  if (name === "settings") {
+    syncSettingsForm();
+  }
+}
+
+function closeModal() {
+  uiState.openModal = null;
+  elements.reportModal.hidden = true;
+  elements.settingsModal.hidden = true;
+}
+
+function handleKeydown(event) {
+  const target = event.target;
+  const isEditable = target instanceof HTMLElement && target.matches("input, textarea, select, [contenteditable='true']");
+
+  if (event.key === "Escape" && uiState.openModal) {
+    closeModal();
+    return;
+  }
+
+  if (isEditable || uiState.openModal) {
+    return;
+  }
+
+  if (event.code === "Space") {
+    event.preventDefault();
+    toggleTimer();
+  }
+
+  if (event.key.toLowerCase() === "r") {
+    resetTimer();
+  }
+}
+
+function handleSettingsSubmit(event) {
+  event.preventDefault();
+
+  const formData = new FormData(event.currentTarget);
+  applySettings({
+    pomodoro: formData.get("pomodoro"),
+    shortBreak: formData.get("shortBreak"),
+    longBreak: formData.get("longBreak"),
+  });
+  closeModal();
+}
+
+function resetSettingsInputs() {
+  elements.settingsPomodoro.value = String(DEFAULT_SETTINGS.pomodoro);
+  elements.settingsShortBreak.value = String(DEFAULT_SETTINGS.shortBreak);
+  elements.settingsLongBreak.value = String(DEFAULT_SETTINGS.longBreak);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   elements.timerDisplay = document.querySelector("#timer-display");
   elements.modeCaption = document.querySelector("#mode-caption");
   elements.progressBar = document.querySelector("#progress-bar");
   elements.startPauseBtn = document.querySelector("#start-pause-btn");
   elements.resetBtn = document.querySelector("#reset-btn");
-  elements.sessionCount = document.querySelector("#session-count");
-  elements.completedCount = document.querySelector("#completed-count");
-  elements.nextLabel = document.querySelector("#next-label");
-  elements.statusCopy = document.querySelector("#status-copy");
   elements.modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
+  elements.openReportBtn = document.querySelector("#open-report-btn");
+  elements.openSettingsBtn = document.querySelector("#open-settings-btn");
+  elements.reportModal = document.querySelector("#report-modal");
+  elements.settingsModal = document.querySelector("#settings-modal");
   elements.hoursFocused = document.querySelector("#hours-focused");
   elements.daysAccessed = document.querySelector("#days-accessed");
   elements.dayStreak = document.querySelector("#day-streak");
@@ -716,25 +786,47 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.periodPrev = document.querySelector("#period-prev");
   elements.periodNext = document.querySelector("#period-next");
   elements.chartGrid = document.querySelector("#chart-grid");
+  elements.settingsForm = document.querySelector("#settings-form");
+  elements.settingsPomodoro = document.querySelector("#settings-pomodoro");
+  elements.settingsShortBreak = document.querySelector("#settings-short-break");
+  elements.settingsLongBreak = document.querySelector("#settings-long-break");
+  elements.settingsResetDefaults = document.querySelector("#settings-reset-defaults");
 
+  loadSettings();
+  syncSettingsForm();
   loadAnalytics();
   markAccess();
 
   elements.startPauseBtn.addEventListener("click", toggleTimer);
   elements.resetBtn.addEventListener("click", resetTimer);
+  elements.openReportBtn.addEventListener("click", () => openModal("report"));
+  elements.openSettingsBtn.addEventListener("click", () => openModal("settings"));
   elements.periodPrev.addEventListener("click", () => shiftReportPeriod(-1));
   elements.periodNext.addEventListener("click", () => shiftReportPeriod(1));
-  window.addEventListener("keydown", handleKeydown);
-  window.addEventListener("beforeunload", saveState);
+  elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
+  elements.settingsResetDefaults.addEventListener("click", resetSettingsInputs);
+
+  document.addEventListener("click", (event) => {
+    const closeTrigger = event.target.closest("[data-close-modal]");
+
+    if (closeTrigger) {
+      closeModal();
+    }
+  });
+
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       syncRemainingTime();
       saveState();
-    } else {
-      markAccess();
-      renderReport();
+      return;
     }
+
+    markAccess();
+    renderReport();
   });
+
+  window.addEventListener("keydown", handleKeydown);
+  window.addEventListener("beforeunload", saveState);
 
   elements.modeTabs.forEach((tab) => {
     tab.addEventListener("click", () => {

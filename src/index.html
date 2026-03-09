@@ -15,7 +15,10 @@
           <p class="eyebrow">Focus timer for deep work</p>
           <h1>Pomofocus</h1>
         </div>
-        <div class="topbar-badge">Tauri desktop</div>
+        <div class="topbar-actions">
+          <button class="topbar-action" id="open-report-btn" type="button">Report</button>
+          <button class="topbar-action" id="open-settings-btn" type="button">Settings</button>
+        </div>
       </header>
 
       <section class="timer-card">
@@ -41,41 +44,20 @@
           <button class="primary-action" id="start-pause-btn" type="button">Start</button>
           <button class="secondary-action" id="reset-btn" type="button">Reset</button>
         </div>
+        <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurueck.</p>
       </section>
 
-      <section class="status-grid" aria-label="Timer-Status">
-        <article class="status-card">
-          <p class="status-label">Aktueller Fokusblock</p>
-          <p class="status-value" id="session-count">#1</p>
-        </article>
+    </main>
 
-        <article class="status-card">
-          <p class="status-label">Heute abgeschlossen</p>
-          <p class="status-value" id="completed-count">0</p>
-        </article>
-
-        <article class="status-card">
-          <p class="status-label">Nächster Wechsel</p>
-          <p class="status-value status-value--small" id="next-label">Short Break</p>
-        </article>
-      </section>
-
-      <section class="focus-panel">
-        <div class="cycle-track" aria-label="Vierer-Zyklus">
-          <span class="cycle-dot is-current" data-cycle="1"></span>
-          <span class="cycle-dot" data-cycle="2"></span>
-          <span class="cycle-dot" data-cycle="3"></span>
-          <span class="cycle-dot" data-cycle="4"></span>
-        </div>
-
-        <p class="status-copy" id="status-copy">Zeit zum Fokussieren.</p>
-        <p class="status-note">Nach 4 Fokus-Sessions wechselt der Timer automatisch in eine Long Break. Leertaste startet oder pausiert, `R` setzt den Modus zurueck.</p>
-      </section>
-
-      <section class="report-panel" aria-labelledby="report-title">
-        <div class="section-heading">
-          <h2 id="report-title">Activity Summary</h2>
-          <div class="section-line"></div>
+    <div class="overlay" id="report-modal" hidden>
+      <div class="overlay-backdrop" data-close-modal="report"></div>
+      <section class="modal-card modal-card--report" role="dialog" aria-modal="true" aria-labelledby="report-title">
+        <div class="modal-topbar">
+          <div class="section-heading">
+            <h2 id="report-title">Activity Summary</h2>
+            <div class="section-line"></div>
+          </div>
+          <button class="modal-close" type="button" data-close-modal="report" aria-label="Report schliessen">&times;</button>
         </div>
 
         <div class="summary-grid">
@@ -142,6 +124,50 @@
           <div class="chart-grid" id="chart-grid"></div>
         </div>
       </section>
-    </main>
+    </div>
+
+    <div class="overlay" id="settings-modal" hidden>
+      <div class="overlay-backdrop" data-close-modal="settings"></div>
+      <section class="modal-card modal-card--settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-topbar">
+          <div class="section-heading">
+            <h2 id="settings-title">Settings</h2>
+            <div class="section-line"></div>
+          </div>
+          <button class="modal-close" type="button" data-close-modal="settings" aria-label="Settings schliessen">&times;</button>
+        </div>
+
+        <form class="settings-form" id="settings-form">
+          <label class="settings-field">
+            <span class="settings-label">Pomodoro</span>
+            <div class="settings-input-wrap">
+              <input id="settings-pomodoro" name="pomodoro" type="number" min="1" max="180" step="1" />
+              <span>min</span>
+            </div>
+          </label>
+
+          <label class="settings-field">
+            <span class="settings-label">Short Break</span>
+            <div class="settings-input-wrap">
+              <input id="settings-short-break" name="shortBreak" type="number" min="1" max="60" step="1" />
+              <span>min</span>
+            </div>
+          </label>
+
+          <label class="settings-field">
+            <span class="settings-label">Long Break</span>
+            <div class="settings-input-wrap">
+              <input id="settings-long-break" name="longBreak" type="number" min="1" max="120" step="1" />
+              <span>min</span>
+            </div>
+          </label>
+
+          <div class="settings-actions">
+            <button class="secondary-action secondary-action--dark" id="settings-reset-defaults" type="button">Defaults</button>
+            <button class="primary-action primary-action--compact" type="submit">Save</button>
+          </div>
+        </form>
+      </section>
+    </div>
   </body>
 </html>

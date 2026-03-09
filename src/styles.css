@@ -12,7 +12,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
-  --shell-width: 960px;
+  --shell-width: 560px;
   --card: rgba(129, 156, 173, 0.42);
   --card-strong: rgba(122, 149, 167, 0.62);
   --card-soft: rgba(255, 255, 255, 0.08);
@@ -44,9 +44,11 @@ body {
 
 body {
   min-height: 100vh;
-  padding: 32px 20px 48px;
+  padding: 20px;
   display: flex;
+  align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 button {
@@ -56,6 +58,12 @@ button {
 .app-shell {
   width: min(100%, var(--shell-width));
   margin: 0 auto;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .topbar {
@@ -84,18 +92,26 @@ h1 {
   color: var(--text-strong);
 }
 
-.topbar-badge {
-  padding: 12px 18px;
+.topbar-action {
+  padding: 10px 16px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--card-soft);
   color: var(--text-muted);
+  cursor: pointer;
   white-space: nowrap;
+  transition: transform 180ms ease, background-color 180ms ease, color 180ms ease;
 }
 
-.timer-card,
-.status-card,
-.focus-panel {
+.topbar-action:hover,
+.topbar-action:focus-visible {
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.timer-card {
   border: 1px solid var(--line);
   background: var(--card);
   box-shadow: var(--shadow);
@@ -103,9 +119,9 @@ h1 {
 }
 
 .timer-card {
-  max-width: 720px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 28px 28px 32px;
+  padding: 26px 24px 22px;
   border-radius: 32px;
   text-align: center;
 }
@@ -180,6 +196,12 @@ h1 {
   gap: 14px;
 }
 
+.timer-note {
+  margin: 14px 0 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
 .primary-action,
 .secondary-action {
   min-width: 170px;
@@ -212,6 +234,131 @@ h1 {
 .secondary-action:focus-visible {
   transform: translateY(-1px);
   outline: none;
+}
+
+.primary-action--compact {
+  min-width: 132px;
+  padding-inline: 18px;
+}
+
+.secondary-action--dark {
+  color: var(--report-text);
+  background: rgba(77, 95, 112, 0.08);
+  border-color: rgba(77, 95, 112, 0.16);
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(19, 29, 37, 0.5);
+  backdrop-filter: blur(10px);
+}
+
+.modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 560px);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+}
+
+.modal-card--report {
+  padding: 24px;
+  background: var(--report-bg);
+  color: var(--report-text);
+}
+
+.modal-card--settings {
+  padding: 24px;
+  background: #f8f6f4;
+  color: var(--report-text);
+}
+
+.modal-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.modal-topbar .section-heading {
+  flex: 1;
+}
+
+.modal-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(77, 95, 112, 0.08);
+  color: var(--report-text);
+  cursor: pointer;
+  font-size: 1.9rem;
+  line-height: 1;
+}
+
+.settings-form {
+  display: grid;
+  gap: 14px;
+}
+
+.settings-field {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--report-text);
+}
+
+.settings-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(77, 95, 112, 0.14);
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.settings-input-wrap span {
+  color: var(--report-muted);
+}
+
+.settings-input-wrap input {
+  width: 100%;
+  border: 0;
+  color: var(--report-text);
+  background: transparent;
+  font-size: 1.1rem;
+}
+
+.settings-input-wrap input:focus {
+  outline: none;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
 }
 
 .status-grid {
@@ -465,7 +612,7 @@ h1 {
   display: grid;
   grid-template-columns: 64px 1fr;
   gap: 14px;
-  min-height: 440px;
+  min-height: 320px;
 }
 
 .chart-scale {
@@ -490,7 +637,7 @@ h1 {
   grid-template-columns: repeat(var(--columns, 7), minmax(24px, 1fr));
   align-items: end;
   gap: 12px;
-  min-height: 440px;
+  min-height: 320px;
   padding: 18px 0 40px;
 }
 
@@ -525,7 +672,7 @@ h1 {
 
 .chart-bar-wrap {
   width: 100%;
-  height: 350px;
+  height: 240px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -563,11 +710,13 @@ h1 {
 
 @media (max-width: 760px) {
   body {
-    padding: 20px 14px 28px;
+    padding: 16px;
   }
 
   .topbar,
-  .controls {
+  .controls,
+  .topbar-actions,
+  .settings-actions {
     flex-direction: column;
   }
 
@@ -576,24 +725,19 @@ h1 {
   }
 
   .timer-card,
-  .focus-panel,
-  .report-panel {
+  .modal-card {
     padding: 22px 18px 24px;
     border-radius: 24px;
   }
 
   .primary-action,
   .secondary-action,
-  .topbar-badge {
+  .topbar-action {
     width: 100%;
   }
 
   .controls {
     align-items: stretch;
-  }
-
-  .status-grid {
-    grid-template-columns: 1fr;
   }
 
   .summary-grid,
@@ -657,4 +801,5 @@ h1 {
   .chart-column {
     min-width: 64px;
   }
+
 }
