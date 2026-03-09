@@ -71,6 +71,77 @@
         <p class="status-copy" id="status-copy">Zeit zum Fokussieren.</p>
         <p class="status-note">Nach 4 Fokus-Sessions wechselt der Timer automatisch in eine Long Break. Leertaste startet oder pausiert, `R` setzt den Modus zurueck.</p>
       </section>
+
+      <section class="report-panel" aria-labelledby="report-title">
+        <div class="section-heading">
+          <h2 id="report-title">Activity Summary</h2>
+          <div class="section-line"></div>
+        </div>
+
+        <div class="summary-grid">
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="8.5"></circle>
+                <path d="M12 7.5V12H15.5"></path>
+              </svg>
+            </div>
+            <p class="summary-value" id="hours-focused">0.0</p>
+            <p class="summary-label">hours focused</p>
+          </article>
+
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="4.5" y="6.5" width="15" height="13" rx="2"></rect>
+                <path d="M8 4.5V8"></path>
+                <path d="M16 4.5V8"></path>
+                <path d="M4.5 10H19.5"></path>
+              </svg>
+            </div>
+            <p class="summary-value" id="days-accessed">0</p>
+            <p class="summary-label">days accessed</p>
+          </article>
+
+          <article class="summary-card">
+            <div class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12.2 4.5C10.2 7.1 15.2 8.3 12.8 11.5C11.8 12.8 9.6 13.2 9.2 15.5C8.8 17.7 10.6 19.5 12.8 19.5C16.2 19.5 18 16.9 18 14.2C18 10.6 15.4 8.2 12.2 4.5Z"></path>
+              </svg>
+            </div>
+            <p class="summary-value" id="day-streak">0</p>
+            <p class="summary-label">day streak</p>
+          </article>
+        </div>
+
+        <div class="section-heading section-heading--compact">
+          <h2>Focus Hours</h2>
+          <div class="section-line"></div>
+        </div>
+
+        <div class="chart-toolbar">
+          <div class="range-switch" role="tablist" aria-label="Zeitraum waehlen">
+            <button class="range-tab is-active" type="button" data-range="week" role="tab" aria-selected="true">Week</button>
+            <button class="range-tab" type="button" data-range="month" role="tab" aria-selected="false">Month</button>
+            <button class="range-tab" type="button" data-range="year" role="tab" aria-selected="false">Year</button>
+          </div>
+
+          <div class="period-nav">
+            <button class="period-btn" id="period-prev" type="button" aria-label="Vorheriger Zeitraum">&lsaquo;</button>
+            <p class="period-label" id="period-label">This Week</p>
+            <button class="period-btn" id="period-next" type="button" aria-label="Naechster Zeitraum">&rsaquo;</button>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="chart-legend">
+            <span class="legend-swatch"></span>
+            <span>Focus time</span>
+          </div>
+
+          <div class="chart-grid" id="chart-grid"></div>
+        </div>
+      </section>
     </main>
   </body>
 </html>
