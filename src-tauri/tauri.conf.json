@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "feep",
+  "productName": "Pomofocus",
   "version": "0.1.0",
   "identifier": "com.nikty.feep",
   "build": {
@@ -10,9 +10,11 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "feep",
-        "width": 800,
-        "height": 600
+        "title": "Pomofocus",
+        "width": 1100,
+        "height": 860,
+        "minWidth": 360,
+        "minHeight": 760
       }
     ],
     "security": {
