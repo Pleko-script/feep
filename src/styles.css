@@ -150,6 +150,23 @@ h1 {
   color: var(--text-strong);
 }
 
+.progress-rail {
+  width: min(100%, 360px);
+  height: 10px;
+  margin: 0 auto 28px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(242, 238, 231, 0.7) 0%, rgba(255, 250, 242, 1) 100%);
+  transition: width 220ms linear;
+}
+
 .controls {
   display: flex;
   justify-content: center;
