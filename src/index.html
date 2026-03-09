@@ -12,12 +12,12 @@
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Focus timer for deep work</p>
+          <p class="eyebrow">Fokus-Timer fuer konzentriertes Arbeiten</p>
           <h1>Pomofocus</h1>
         </div>
         <div class="topbar-actions">
-          <button class="topbar-action" id="open-report-btn" type="button">Report</button>
-          <button class="topbar-action" id="open-settings-btn" type="button">Settings</button>
+          <button class="topbar-action" id="open-report-btn" type="button">Bericht</button>
+          <button class="topbar-action" id="open-settings-btn" type="button">Einstellungen</button>
         </div>
       </header>
 
@@ -27,14 +27,14 @@
             Pomodoro
           </button>
           <button class="mode-tab" type="button" data-mode="shortBreak" role="tab" aria-selected="false">
-            Short Break
+            Kurze Pause
           </button>
           <button class="mode-tab" type="button" data-mode="longBreak" role="tab" aria-selected="false">
-            Long Break
+            Lange Pause
           </button>
         </div>
 
-        <p class="mode-caption" id="mode-caption">Focus session</p>
+        <p class="mode-caption" id="mode-caption">Fokuszeit</p>
         <p class="timer-display" id="timer-display" aria-live="polite">25:00</p>
         <div class="progress-rail" aria-hidden="true">
           <div class="progress-bar" id="progress-bar"></div>
@@ -42,7 +42,7 @@
 
         <div class="controls">
           <button class="primary-action" id="start-pause-btn" type="button">Start</button>
-          <button class="secondary-action" id="reset-btn" type="button">Reset</button>
+          <button class="secondary-action" id="reset-btn" type="button">Zuruecksetzen</button>
         </div>
         <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurueck.</p>
       </section>
@@ -54,10 +54,10 @@
       <section class="modal-card modal-card--report" role="dialog" aria-modal="true" aria-labelledby="report-title">
         <div class="modal-topbar">
           <div class="section-heading">
-            <h2 id="report-title">Activity Summary</h2>
+            <h2 id="report-title">Aktivitaetsuebersicht</h2>
             <div class="section-line"></div>
           </div>
-          <button class="modal-close" type="button" data-close-modal="report" aria-label="Report schliessen">&times;</button>
+          <button class="modal-close" type="button" data-close-modal="report" aria-label="Bericht schliessen">&times;</button>
         </div>
 
         <div class="summary-grid">
@@ -69,7 +69,7 @@
               </svg>
             </div>
             <p class="summary-value" id="hours-focused">0.0</p>
-            <p class="summary-label">hours focused</p>
+            <p class="summary-label">Fokusstunden</p>
           </article>
 
           <article class="summary-card">
@@ -82,7 +82,7 @@
               </svg>
             </div>
             <p class="summary-value" id="days-accessed">0</p>
-            <p class="summary-label">days accessed</p>
+            <p class="summary-label">aktive Tage</p>
           </article>
 
           <article class="summary-card">
@@ -92,25 +92,25 @@
               </svg>
             </div>
             <p class="summary-value" id="day-streak">0</p>
-            <p class="summary-label">day streak</p>
+            <p class="summary-label">Tagesserie</p>
           </article>
         </div>
 
         <div class="section-heading section-heading--compact">
-          <h2>Focus Hours</h2>
+          <h2>Fokusstunden</h2>
           <div class="section-line"></div>
         </div>
 
         <div class="chart-toolbar">
           <div class="range-switch" role="tablist" aria-label="Zeitraum waehlen">
-            <button class="range-tab is-active" type="button" data-range="week" role="tab" aria-selected="true">Week</button>
-            <button class="range-tab" type="button" data-range="month" role="tab" aria-selected="false">Month</button>
-            <button class="range-tab" type="button" data-range="year" role="tab" aria-selected="false">Year</button>
+            <button class="range-tab is-active" type="button" data-range="week" role="tab" aria-selected="true">Woche</button>
+            <button class="range-tab" type="button" data-range="month" role="tab" aria-selected="false">Monat</button>
+            <button class="range-tab" type="button" data-range="year" role="tab" aria-selected="false">Jahr</button>
           </div>
 
           <div class="period-nav">
             <button class="period-btn" id="period-prev" type="button" aria-label="Vorheriger Zeitraum">&lsaquo;</button>
-            <p class="period-label" id="period-label">This Week</p>
+            <p class="period-label" id="period-label">Diese Woche</p>
             <button class="period-btn" id="period-next" type="button" aria-label="Naechster Zeitraum">&rsaquo;</button>
           </div>
         </div>
@@ -118,7 +118,7 @@
         <div class="chart-panel">
           <div class="chart-legend">
             <span class="legend-swatch"></span>
-            <span>Focus time</span>
+            <span>Fokuszeit</span>
           </div>
 
           <div class="chart-grid" id="chart-grid"></div>
@@ -131,10 +131,10 @@
       <section class="modal-card modal-card--settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="modal-topbar">
           <div class="section-heading">
-            <h2 id="settings-title">Settings</h2>
+            <h2 id="settings-title">Einstellungen</h2>
             <div class="section-line"></div>
           </div>
-          <button class="modal-close" type="button" data-close-modal="settings" aria-label="Settings schliessen">&times;</button>
+          <button class="modal-close" type="button" data-close-modal="settings" aria-label="Einstellungen schliessen">&times;</button>
         </div>
 
         <form class="settings-form" id="settings-form">
@@ -142,29 +142,29 @@
             <span class="settings-label">Pomodoro</span>
             <div class="settings-input-wrap">
               <input id="settings-pomodoro" name="pomodoro" type="number" min="1" max="180" step="1" />
-              <span>min</span>
+              <span>Min.</span>
             </div>
           </label>
 
           <label class="settings-field">
-            <span class="settings-label">Short Break</span>
+            <span class="settings-label">Kurze Pause</span>
             <div class="settings-input-wrap">
               <input id="settings-short-break" name="shortBreak" type="number" min="1" max="60" step="1" />
-              <span>min</span>
+              <span>Min.</span>
             </div>
           </label>
 
           <label class="settings-field">
-            <span class="settings-label">Long Break</span>
+            <span class="settings-label">Lange Pause</span>
             <div class="settings-input-wrap">
               <input id="settings-long-break" name="longBreak" type="number" min="1" max="120" step="1" />
-              <span>min</span>
+              <span>Min.</span>
             </div>
           </label>
 
           <div class="settings-actions">
-            <button class="secondary-action secondary-action--dark" id="settings-reset-defaults" type="button">Defaults</button>
-            <button class="primary-action primary-action--compact" type="submit">Save</button>
+            <button class="secondary-action secondary-action--dark" id="settings-reset-defaults" type="button">Standard</button>
+            <button class="primary-action primary-action--compact" type="submit">Speichern</button>
           </div>
         </form>
       </section>

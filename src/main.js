@@ -1,17 +1,17 @@
 const MODES = {
   pomodoro: {
     label: "Pomodoro",
-    caption: "Focus session",
+    caption: "Fokuszeit",
     message: "Zeit zum Fokussieren.",
   },
   shortBreak: {
-    label: "Short Break",
-    caption: "Quick recharge",
+    label: "Kurze Pause",
+    caption: "Kurz erholen",
     message: "Kurz durchatmen und Schultern lockern.",
   },
   longBreak: {
-    label: "Long Break",
-    caption: "Deep reset",
+    label: "Lange Pause",
+    caption: "Richtig abschalten",
     message: "Grosse Pause verdient. Einmal richtig abschalten.",
   },
 };
@@ -210,7 +210,7 @@ function getTotalFocusHours() {
 }
 
 function formatSummaryHours(hours) {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("de-DE", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(hours);
@@ -225,7 +225,7 @@ function formatAxisValue(value) {
 
 function formatDateLabel(date, range) {
   if (range === "week") {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("de-DE", {
       month: "short",
       day: "numeric",
     }).format(date);
@@ -235,7 +235,7 @@ function formatDateLabel(date, range) {
     return String(date.getDate());
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("de-DE", {
     month: "short",
   }).format(date);
 }
@@ -243,14 +243,14 @@ function formatDateLabel(date, range) {
 function formatPeriodLabel(startDate, endDate, range) {
   if (range === "week") {
     if (reportState.offset === 0) {
-      return "This Week";
+      return "Diese Woche";
     }
 
-    const startLabel = new Intl.DateTimeFormat("en-US", {
+    const startLabel = new Intl.DateTimeFormat("de-DE", {
       month: "short",
       day: "numeric",
     }).format(startDate);
-    const endLabel = new Intl.DateTimeFormat("en-US", {
+    const endLabel = new Intl.DateTimeFormat("de-DE", {
       month: "short",
       day: "numeric",
     }).format(endDate);
@@ -258,7 +258,7 @@ function formatPeriodLabel(startDate, endDate, range) {
   }
 
   if (range === "month") {
-    return new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("de-DE", {
       month: "long",
       year: "numeric",
     }).format(startDate);
@@ -397,7 +397,7 @@ function renderReport() {
         .map((point) => {
           const height = scaleMax === 0 ? 0 : (point.valueHours / scaleMax) * 100;
           return `
-            <div class="chart-column" title="${point.label}: ${formatAxisValue(point.valueHours)} h">
+            <div class="chart-column" title="${point.label}: ${formatAxisValue(point.valueHours)} Std.">
               <div class="chart-bar-wrap">
                 <div class="chart-bar" style="height:${Math.max(height, point.valueHours > 0 ? 2 : 0)}%"></div>
               </div>
@@ -641,7 +641,7 @@ function completeSession() {
     return;
   }
 
-  showNotification("Pause beendet", "Der naechste Fokusblock ist bereit.");
+  showNotification("Pause beendet", "Die naechste Fokuszeit ist bereit.");
   switchMode("pomodoro");
 }
 
