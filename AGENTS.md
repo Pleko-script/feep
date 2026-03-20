@@ -29,6 +29,21 @@ Agents working in this repo should preserve the existing lightweight structure a
 - Prefer ASCII in source text when touching files that already use ASCII fallbacks like `ae`, `ue`, `ss`.
 - Do not add analytics services, cloud dependencies, or networked features unless explicitly requested.
 
+## Core Priorities
+
+- Performance first.
+- Reliability first.
+- Keep behavior predictable under load and during failures such as session restarts, reconnects, and partial streams.
+- If a tradeoff is required, choose correctness and robustness over short-term convenience.
+
+## Maintainability
+
+- Long-term maintainability is a core priority.
+- Before adding new functionality, check whether shared logic should be extracted into a separate module.
+- Treat duplicated logic across multiple files as a code smell and avoid it.
+- Do not hesitate to change existing code when that produces a cleaner long-term design.
+- Do not take shortcuts by adding narrowly scoped local logic just to solve one problem.
+
 ## Frontend Notes
 
 - State is managed in `src/main.js` through plain objects such as `state`, `reportState`, and `uiState`.
