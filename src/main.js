@@ -48,6 +48,80 @@ const uiState = {
 const elements = {};
 let analytics = createEmptyAnalytics();
 let settings = { ...DEFAULT_SETTINGS };
+let audioContext = null;
+
+function getAudioContext() {
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextCtor) {
+    return null;
+  }
+
+  if (!audioContext) {
+    audioContext = new AudioContextCtor();
+  }
+
+  return audioContext;
+}
+
+function playToneSequence(sequence) {
+  const context = getAudioContext();
+
+  if (!context) {
+    return;
+  }
+
+  const startAt = Math.max(context.currentTime, 0.01);
+
+  if (context.state === "suspended") {
+    context.resume().catch(() => {});
+  }
+
+  sequence.reduce((offset, tone) => {
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    const toneStart = startAt + offset;
+    const attack = Math.min(0.02, tone.duration / 3);
+    const releaseStart = tone.duration * 0.65;
+
+    oscillator.type = tone.type ?? "sine";
+    oscillator.frequency.setValueAtTime(tone.frequency, toneStart);
+
+    gainNode.gain.setValueAtTime(0.0001, toneStart);
+    gainNode.gain.exponentialRampToValueAtTime(tone.volume ?? 0.05, toneStart + attack);
+    gainNode.gain.setValueAtTime(tone.volume ?? 0.05, toneStart + releaseStart);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, toneStart + tone.duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    oscillator.start(toneStart);
+    oscillator.stop(toneStart + tone.duration);
+
+    return offset + tone.duration + (tone.gap ?? 0);
+  }, 0);
+}
+
+function playStartSound() {
+  playToneSequence([
+    { frequency: 660, duration: 0.09, gap: 0.02, volume: 0.035, type: "triangle" },
+    { frequency: 880, duration: 0.12, volume: 0.045, type: "triangle" },
+  ]);
+}
+
+function playPauseSound() {
+  playToneSequence([
+    { frequency: 520, duration: 0.08, gap: 0.015, volume: 0.03, type: "sine" },
+    { frequency: 400, duration: 0.1, volume: 0.035, type: "sine" },
+  ]);
+}
+
+function playCompleteSound() {
+  playToneSequence([
+    { frequency: 784, duration: 0.12, gap: 0.025, volume: 0.04, type: "triangle" },
+    { frequency: 988, duration: 0.12, gap: 0.025, volume: 0.045, type: "triangle" },
+    { frequency: 1174, duration: 0.24, volume: 0.05, type: "triangle" },
+  ]);
+}
 
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -630,6 +704,7 @@ function completeSession() {
   state.isRunning = false;
   state.targetTime = null;
   state.remainingSeconds = 0;
+  playCompleteSound();
 
   if (completedMode === "pomodoro") {
     recordFocusSession(getModeSeconds("pomodoro"));
@@ -661,6 +736,7 @@ function startTimer() {
     return;
   }
 
+  playStartSound();
   state.isRunning = true;
   state.targetTime = Date.now() + state.remainingSeconds * 1000;
   ensureNotificationPermission();
@@ -674,6 +750,7 @@ function pauseTimer() {
     return;
   }
 
+  playPauseSound();
   syncRemainingTime();
   stopInterval();
   state.targetTime = null;
