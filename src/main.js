@@ -832,14 +832,24 @@ function cancelMicroBreak() {
   state.activeMicroBreak = null;
 }
 
-function syncRemainingTime() {
-  if (!state.isRunning || !state.targetTime) {
-    return;
+function getRemainingMilliseconds(targetTime = state.targetTime) {
+  if (!targetTime) {
+    return 0;
   }
 
-  const secondsLeft = Math.max(0, Math.ceil((state.targetTime - Date.now()) / 1000));
+  return Math.max(0, targetTime - Date.now());
+}
+
+function syncRemainingTime() {
+  if (!state.isRunning || !state.targetTime) {
+    return 0;
+  }
+
+  const remainingMilliseconds = getRemainingMilliseconds();
+  const secondsLeft = remainingMilliseconds <= 0 ? 0 : Math.ceil(remainingMilliseconds / 1000);
   state.remainingSeconds = secondsLeft;
   syncCurrentModeRemaining();
+  return remainingMilliseconds;
 }
 
 function maybeTriggerMicroBreak() {
@@ -979,13 +989,13 @@ function tick() {
     return;
   }
 
-  syncRemainingTime();
+  const remainingMilliseconds = syncRemainingTime();
 
   if (maybeTriggerMicroBreak()) {
     return;
   }
 
-  if (state.remainingSeconds <= 0) {
+  if (remainingMilliseconds <= 0 || state.remainingSeconds <= 0) {
     completeSession();
     return;
   }
