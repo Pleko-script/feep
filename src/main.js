@@ -12,7 +12,7 @@ const MODES = {
   longBreak: {
     label: "Lange Pause",
     caption: "Richtig abschalten",
-    message: "Grosse Pause verdient. Einmal richtig abschalten.",
+    message: "Große Pause verdient. Einmal richtig abschalten.",
   },
 };
 
@@ -735,7 +735,7 @@ function render() {
   const activeMode = MODES[state.mode];
   const totalSeconds = getModeSeconds(state.mode);
   const progress = ((totalSeconds - state.remainingSeconds) / totalSeconds) * 100;
-  const statusText = state.isRunning ? "Laeuft" : "Pausiert";
+  const statusText = state.isRunning ? "Läuft" : "Pausiert";
   const hideTime = state.isTimeHidden;
 
   elements.timerDisplay.textContent = formatTime(state.remainingSeconds);
@@ -794,7 +794,7 @@ function completeSession() {
     return;
   }
 
-  showNotification("Pause beendet", "Die naechste Fokuszeit ist bereit.");
+  showNotification("Pause beendet", "Die nächste Fokuszeit ist bereit.");
   resetModeRemaining(completedMode);
   resetModeRemaining("pomodoro");
   switchMode("pomodoro");

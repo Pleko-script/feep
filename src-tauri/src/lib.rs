@@ -41,7 +41,7 @@ pub fn run() {
             is_quitting: AtomicBool::new(false),
         })
         .setup(|app| {
-            let open_item = MenuItemBuilder::with_id(TRAY_OPEN_ID, "Oeffnen").build(app)?;
+            let open_item = MenuItemBuilder::with_id(TRAY_OPEN_ID, "Öffnen").build(app)?;
             let quit_item = MenuItemBuilder::with_id(TRAY_QUIT_ID, "Beenden").build(app)?;
             let tray_menu = MenuBuilder::new(app)
                 .items(&[&open_item, &quit_item])
