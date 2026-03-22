@@ -29,7 +29,9 @@ const SETTINGS_KEY = "pomofocus-settings-v1";
 const state = {
   mode: "pomodoro",
   remainingSeconds: DEFAULT_SETTINGS.pomodoro * 60,
+  remainingByMode: createModeSecondsMap(DEFAULT_SETTINGS),
   isRunning: false,
+  isTimeHidden: false,
   completedPomodoros: 0,
   completedDate: getTodayKey(),
   intervalId: null,
@@ -189,6 +191,46 @@ function clampNumber(value, fallback, min, max) {
 
 function getModeSeconds(mode) {
   return (settings[mode] ?? DEFAULT_SETTINGS[mode]) * 60;
+}
+
+function getModeSecondsForSettings(mode, sourceSettings = settings) {
+  return (sourceSettings[mode] ?? DEFAULT_SETTINGS[mode]) * 60;
+}
+
+function createModeSecondsMap(sourceSettings = settings) {
+  return {
+    pomodoro: getModeSecondsForSettings("pomodoro", sourceSettings),
+    shortBreak: getModeSecondsForSettings("shortBreak", sourceSettings),
+    longBreak: getModeSecondsForSettings("longBreak", sourceSettings),
+  };
+}
+
+function clampModeRemaining(mode, value, sourceSettings = settings) {
+  return Math.min(
+    getModeSecondsForSettings(mode, sourceSettings),
+    clampNumber(value, getModeSecondsForSettings(mode, sourceSettings), 1, 60 * 60 * 8),
+  );
+}
+
+function setModeRemaining(mode, seconds) {
+  state.remainingByMode[mode] = clampModeRemaining(mode, seconds);
+
+  if (state.mode === mode) {
+    state.remainingSeconds = state.remainingByMode[mode];
+  }
+}
+
+function syncCurrentModeRemaining() {
+  setModeRemaining(state.mode, state.remainingSeconds);
+}
+
+function resetModeRemaining(mode) {
+  setModeRemaining(mode, getModeSeconds(mode));
+}
+
+function resetAllModeRemaining() {
+  state.remainingByMode = createModeSecondsMap();
+  state.remainingSeconds = state.remainingByMode[state.mode];
 }
 
 function createEmptyAnalytics() {
@@ -533,7 +575,7 @@ function applySettings(nextSettings) {
   stopInterval();
   state.isRunning = false;
   state.targetTime = null;
-  state.remainingSeconds = getModeSeconds(state.mode);
+  resetAllModeRemaining();
   saveSettings();
   syncSettingsForm();
   render();
@@ -556,7 +598,9 @@ function saveState() {
   const snapshot = {
     mode: state.mode,
     remainingSeconds: state.remainingSeconds,
+    remainingByMode: state.remainingByMode,
     isRunning: state.isRunning,
+    isTimeHidden: state.isTimeHidden,
     completedPomodoros: state.completedPomodoros,
     completedDate: state.completedDate,
     targetTime: state.targetTime,
@@ -585,16 +629,34 @@ function hydrateState() {
   const rawState = window.localStorage.getItem(STORAGE_KEY);
 
   if (!rawState) {
-    state.remainingSeconds = getModeSeconds(state.mode);
+    state.remainingByMode = createModeSecondsMap();
+    state.remainingSeconds = state.remainingByMode[state.mode];
     render();
     return;
   }
 
   try {
     const savedState = JSON.parse(rawState);
+    const savedRemainingByMode = savedState.remainingByMode && typeof savedState.remainingByMode === "object" ? savedState.remainingByMode : {};
+
     state.mode = MODES[savedState.mode] ? savedState.mode : "pomodoro";
+    state.isTimeHidden = Boolean(savedState.isTimeHidden);
     state.completedDate = savedState.completedDate || getTodayKey();
     state.completedPomodoros = Number(savedState.completedPomodoros) || 0;
+    state.remainingByMode = {
+      pomodoro: clampModeRemaining(
+        "pomodoro",
+        savedRemainingByMode.pomodoro ?? (savedState.mode === "pomodoro" ? savedState.remainingSeconds : getModeSeconds("pomodoro")),
+      ),
+      shortBreak: clampModeRemaining(
+        "shortBreak",
+        savedRemainingByMode.shortBreak ?? (savedState.mode === "shortBreak" ? savedState.remainingSeconds : getModeSeconds("shortBreak")),
+      ),
+      longBreak: clampModeRemaining(
+        "longBreak",
+        savedRemainingByMode.longBreak ?? (savedState.mode === "longBreak" ? savedState.remainingSeconds : getModeSeconds("longBreak")),
+      ),
+    };
 
     syncDailyCount();
 
@@ -617,11 +679,13 @@ function hydrateState() {
             state.completedPomodoros = completedInCycle;
           }
 
+          resetModeRemaining("pomodoro");
           state.mode = completedInCycle % 4 === 0 ? "longBreak" : "shortBreak";
-          state.remainingSeconds = getModeSeconds(state.mode);
+          resetModeRemaining(state.mode);
         } else {
+          resetModeRemaining(savedState.mode);
           state.mode = "pomodoro";
-          state.remainingSeconds = getModeSeconds("pomodoro");
+          resetModeRemaining("pomodoro");
         }
 
         state.targetTime = null;
@@ -630,15 +694,14 @@ function hydrateState() {
     } else {
       state.targetTime = null;
       state.isRunning = false;
-      state.remainingSeconds = Math.min(
-        getModeSeconds(state.mode),
-        clampNumber(savedState.remainingSeconds, getModeSeconds(state.mode), 1, 60 * 60 * 8),
-      );
+      state.remainingSeconds = state.remainingByMode[state.mode];
     }
   } catch {
     state.mode = "pomodoro";
-    state.remainingSeconds = getModeSeconds("pomodoro");
+    state.remainingByMode = createModeSecondsMap();
+    state.remainingSeconds = state.remainingByMode[state.mode];
     state.isRunning = false;
+    state.isTimeHidden = false;
     state.completedPomodoros = 0;
     state.completedDate = getTodayKey();
     state.targetTime = null;
@@ -662,6 +725,7 @@ function syncRemainingTime() {
 
   const secondsLeft = Math.max(0, Math.ceil((state.targetTime - Date.now()) / 1000));
   state.remainingSeconds = secondsLeft;
+  syncCurrentModeRemaining();
 }
 
 function render() {
@@ -671,12 +735,21 @@ function render() {
   const activeMode = MODES[state.mode];
   const totalSeconds = getModeSeconds(state.mode);
   const progress = ((totalSeconds - state.remainingSeconds) / totalSeconds) * 100;
+  const statusText = state.isRunning ? "Laeuft" : "Pausiert";
+  const hideTime = state.isTimeHidden;
 
   elements.timerDisplay.textContent = formatTime(state.remainingSeconds);
   elements.modeCaption.textContent = activeMode.caption;
+  elements.timerStatusLabel.textContent = statusText;
+  elements.timerStatus.dataset.state = state.isRunning ? "running" : "paused";
+  elements.timerStatus.setAttribute("aria-label", `Timer ist ${statusText}`);
+  elements.timerStatus.hidden = !hideTime;
   elements.startPauseBtn.textContent = state.isRunning ? "Pause" : "Start";
+  elements.toggleFocusModeBtn.textContent = hideTime ? "Zeit zeigen" : "Zeit verbergen";
   elements.progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-  document.title = `${formatTime(state.remainingSeconds)} · ${activeMode.label}`;
+  elements.progressRail.hidden = hideTime;
+  elements.timerDisplay.classList.toggle("timer-display--hidden", hideTime);
+  document.title = hideTime ? `${statusText} · ${activeMode.label}` : `${formatTime(state.remainingSeconds)} · ${activeMode.label}`;
 
   elements.modeTabs.forEach((tab) => {
     const isActive = tab.dataset.mode === state.mode;
@@ -688,9 +761,11 @@ function render() {
 }
 
 function switchMode(mode) {
+  syncRemainingTime();
+  syncCurrentModeRemaining();
   stopInterval();
   state.mode = mode;
-  state.remainingSeconds = getModeSeconds(mode);
+  state.remainingSeconds = state.remainingByMode[mode];
   state.targetTime = null;
   state.isRunning = false;
   render();
@@ -704,6 +779,7 @@ function completeSession() {
   state.isRunning = false;
   state.targetTime = null;
   state.remainingSeconds = 0;
+  setModeRemaining(completedMode, 0);
   playCompleteSound();
 
   if (completedMode === "pomodoro") {
@@ -712,11 +788,15 @@ function completeSession() {
 
     const nextMode = state.completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
     showNotification("Pomodoro abgeschlossen", `Wechsel zu ${MODES[nextMode].label}.`);
+    resetModeRemaining(completedMode);
+    resetModeRemaining(nextMode);
     switchMode(nextMode);
     return;
   }
 
   showNotification("Pause beendet", "Die naechste Fokuszeit ist bereit.");
+  resetModeRemaining(completedMode);
+  resetModeRemaining("pomodoro");
   switchMode("pomodoro");
 }
 
@@ -769,7 +849,18 @@ function toggleTimer() {
 }
 
 function resetTimer() {
-  switchMode(state.mode);
+  stopInterval();
+  state.isRunning = false;
+  state.targetTime = null;
+  resetModeRemaining(state.mode);
+  render();
+  saveState();
+}
+
+function toggleFocusMode() {
+  state.isTimeHidden = !state.isTimeHidden;
+  render();
+  saveState();
 }
 
 function setReportRange(range) {
@@ -846,10 +937,14 @@ function resetSettingsInputs() {
 
 window.addEventListener("DOMContentLoaded", () => {
   elements.timerDisplay = document.querySelector("#timer-display");
+  elements.timerStatus = document.querySelector("#timer-status");
+  elements.timerStatusLabel = document.querySelector("#timer-status-label");
   elements.modeCaption = document.querySelector("#mode-caption");
+  elements.progressRail = document.querySelector("#progress-rail");
   elements.progressBar = document.querySelector("#progress-bar");
   elements.startPauseBtn = document.querySelector("#start-pause-btn");
   elements.resetBtn = document.querySelector("#reset-btn");
+  elements.toggleFocusModeBtn = document.querySelector("#toggle-focus-mode-btn");
   elements.modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
   elements.openReportBtn = document.querySelector("#open-report-btn");
   elements.openSettingsBtn = document.querySelector("#open-settings-btn");
@@ -876,6 +971,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   elements.startPauseBtn.addEventListener("click", toggleTimer);
   elements.resetBtn.addEventListener("click", resetTimer);
+  elements.toggleFocusModeBtn.addEventListener("click", toggleFocusMode);
   elements.openReportBtn.addEventListener("click", () => openModal("report"));
   elements.openSettingsBtn.addEventListener("click", () => openModal("settings"));
   elements.periodPrev.addEventListener("click", () => shiftReportPeriod(-1));

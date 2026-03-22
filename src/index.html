@@ -36,13 +36,18 @@
 
         <p class="mode-caption" id="mode-caption">Fokuszeit</p>
         <p class="timer-display" id="timer-display" aria-live="polite">25:00</p>
-        <div class="progress-rail" aria-hidden="true">
+        <p class="timer-status" id="timer-status" data-state="paused" hidden>
+          <span class="timer-status-dot" aria-hidden="true"></span>
+          <span class="timer-status-label" id="timer-status-label">Pausiert</span>
+        </p>
+        <div class="progress-rail" id="progress-rail" aria-hidden="true">
           <div class="progress-bar" id="progress-bar"></div>
         </div>
 
         <div class="controls">
           <button class="primary-action" id="start-pause-btn" type="button">Start</button>
           <button class="secondary-action" id="reset-btn" type="button">Zuruecksetzen</button>
+          <button class="secondary-action" id="toggle-focus-mode-btn" type="button">Zeit verbergen</button>
         </div>
         <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurueck.</p>
       </section>
