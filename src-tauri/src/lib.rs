@@ -40,6 +40,9 @@ pub fn run() {
         .manage(AppState {
             is_quitting: AtomicBool::new(false),
         })
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            restore_main_window(app);
+        }))
         .setup(|app| {
             let open_item = MenuItemBuilder::with_id(TRAY_OPEN_ID, "Öffnen").build(app)?;
             let quit_item = MenuItemBuilder::with_id(TRAY_QUIT_ID, "Beenden").build(app)?;
