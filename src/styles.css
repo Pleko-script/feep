@@ -437,6 +437,7 @@ h1 {
   color: var(--foreground);
   background: transparent;
   font-size: 1rem;
+  color-scheme: dark;
 }
 
 .settings-input-wrap input:focus {
@@ -447,8 +448,159 @@ h1 {
   outline: none;
 }
 
+.settings-input-wrap--select {
+  padding-right: 10px;
+}
+
+.settings-input-wrap--select select {
+  min-height: 24px;
+  padding-right: 28px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 3px),
+    calc(100% - 10px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.settings-input-wrap--select select:disabled {
+  cursor: not-allowed;
+}
+
+.settings-input-wrap--select select option {
+  color: var(--foreground);
+  background: hsl(222 38% 10%);
+}
+
 .settings-field--toggle {
   margin-top: 4px;
+}
+
+.settings-feature-card {
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background:
+    linear-gradient(180deg, hsla(220, 48%, 13%, 0.96), hsla(222, 52%, 9%, 0.98)),
+    var(--background);
+  box-shadow:
+    inset 0 1px 0 hsla(0, 0%, 100%, 0.04),
+    0 14px 30px hsla(222, 84%, 3%, 0.24);
+}
+
+.settings-feature-card[data-enabled="false"] .micro-break-variant-block {
+  opacity: 0.5;
+}
+
+.settings-feature-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-feature-title {
+  margin: 8px 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.settings-label--small {
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.micro-break-variant-block {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid hsla(216, 25%, 28%, 0.9);
+  border-radius: var(--radius);
+  background: hsla(221, 38%, 14%, 0.9);
+  transition: opacity 160ms ease;
+}
+
+.micro-break-variant-copy,
+.settings-feature-card .settings-help {
+  margin: 0;
+}
+
+.micro-break-variant-note {
+  margin: 6px 0 0;
+  color: var(--muted-foreground);
+  font-size: 0.93rem;
+}
+
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-switch input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.toggle-switch-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 58px;
+  height: 32px;
+  padding: 4px;
+  border: 1px solid hsla(217, 26%, 32%, 1);
+  border-radius: 999px;
+  background: hsla(217, 24%, 22%, 1);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.toggle-switch-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: hsl(210 40% 98%);
+  box-shadow: 0 2px 10px hsla(222, 50%, 4%, 0.32);
+  transition: transform 180ms ease;
+}
+
+.toggle-switch input:checked + .toggle-switch-track {
+  background: hsla(142, 69%, 38%, 0.95);
+  border-color: hsla(142, 69%, 48%, 1);
+  box-shadow: 0 0 0 6px hsla(142, 69%, 48%, 0.12);
+}
+
+.toggle-switch input:checked + .toggle-switch-track .toggle-switch-thumb {
+  transform: translateX(26px);
+}
+
+.toggle-switch input:focus-visible + .toggle-switch-track {
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--ring);
+}
+
+.toggle-switch-text {
+  min-width: 34px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--foreground);
 }
 
 .settings-toggle-row {
@@ -769,7 +921,8 @@ h1 {
   .controls,
   .topbar-actions,
   .settings-actions,
-  .settings-toggle-row {
+  .settings-toggle-row,
+  .settings-feature-head {
     flex-direction: column;
   }
 
@@ -791,6 +944,11 @@ h1 {
 
   .controls {
     align-items: stretch;
+  }
+
+  .toggle-switch {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .summary-grid {

@@ -627,7 +627,19 @@ function syncSettingsForm() {
   elements.settingsLongBreak.value = String(settings.longBreak);
   elements.settingsMicroBreaksEnabled.checked = settings.microBreaksEnabled;
   elements.settingsMicroBreakVariant.value = settings.microBreakVariant;
-  elements.settingsMicroBreakVariant.disabled = !settings.microBreaksEnabled;
+  syncMicroBreakSettingsState(settings.microBreaksEnabled);
+}
+
+function syncMicroBreakSettingsState(isEnabled) {
+  elements.settingsMicroBreakVariant.disabled = !isEnabled;
+
+  if (elements.microBreakSettings) {
+    elements.microBreakSettings.dataset.enabled = isEnabled ? "true" : "false";
+  }
+
+  if (elements.settingsMicroBreaksState) {
+    elements.settingsMicroBreaksState.textContent = isEnabled ? "An" : "Aus";
+  }
 }
 
 function applySettings(nextSettings) {
@@ -1132,7 +1144,7 @@ function resetSettingsInputs() {
   elements.settingsLongBreak.value = String(DEFAULT_SETTINGS.longBreak);
   elements.settingsMicroBreaksEnabled.checked = DEFAULT_SETTINGS.microBreaksEnabled;
   elements.settingsMicroBreakVariant.value = DEFAULT_SETTINGS.microBreakVariant;
-  elements.settingsMicroBreakVariant.disabled = !DEFAULT_SETTINGS.microBreaksEnabled;
+  syncMicroBreakSettingsState(DEFAULT_SETTINGS.microBreaksEnabled);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -1162,7 +1174,9 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.settingsPomodoro = document.querySelector("#settings-pomodoro");
   elements.settingsShortBreak = document.querySelector("#settings-short-break");
   elements.settingsLongBreak = document.querySelector("#settings-long-break");
+  elements.microBreakSettings = document.querySelector("#micro-break-settings");
   elements.settingsMicroBreaksEnabled = document.querySelector("#settings-micro-breaks-enabled");
+  elements.settingsMicroBreaksState = document.querySelector("#settings-micro-breaks-state");
   elements.settingsMicroBreakVariant = document.querySelector("#settings-micro-break-variant");
   elements.settingsResetDefaults = document.querySelector("#settings-reset-defaults");
 
@@ -1181,7 +1195,7 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
   elements.settingsResetDefaults.addEventListener("click", resetSettingsInputs);
   elements.settingsMicroBreaksEnabled.addEventListener("change", () => {
-    elements.settingsMicroBreakVariant.disabled = !elements.settingsMicroBreaksEnabled.checked;
+    syncMicroBreakSettingsState(elements.settingsMicroBreaksEnabled.checked);
   });
 
   document.addEventListener("click", (event) => {

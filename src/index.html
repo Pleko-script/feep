@@ -51,7 +51,6 @@
         </div>
         <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurück.</p>
       </section>
-
     </main>
 
     <div class="overlay" id="report-modal" hidden>
@@ -167,23 +166,37 @@
             </div>
           </label>
 
-          <label class="settings-field settings-field--toggle">
-            <span class="settings-label">Mikropausen</span>
-            <div class="settings-toggle-row">
-              <span class="settings-help">Kurze automatische Sekundenpausen waehrend eines Pomodoros</span>
-              <input id="settings-micro-breaks-enabled" name="microBreaksEnabled" type="checkbox" />
-            </div>
-          </label>
+          <section class="settings-field settings-feature-card" id="micro-break-settings">
+            <div class="settings-feature-head">
+              <div>
+                <span class="settings-label">Mikropausen</span>
+                <p class="settings-feature-title">Kurze Reset-Pausen waehrend eines Pomodoros</p>
+                <p class="settings-help">Optionaler kurzer Ton, kurzer Stopp, dann automatischer Wiedereinstieg.</p>
+              </div>
 
-          <label class="settings-field">
-            <span class="settings-label">Variante</span>
-            <div class="settings-input-wrap">
-              <select id="settings-micro-break-variant" name="microBreakVariant">
-                <option value="A">A · einmal kurz bei ca. 50%</option>
-                <option value="B">B · zweimal kurz bei ca. 40% und 78%</option>
-              </select>
+              <label class="toggle-switch" for="settings-micro-breaks-enabled">
+                <input id="settings-micro-breaks-enabled" name="microBreaksEnabled" type="checkbox" />
+                <span class="toggle-switch-track" aria-hidden="true">
+                  <span class="toggle-switch-thumb"></span>
+                </span>
+                <span class="toggle-switch-text" id="settings-micro-breaks-state">Aus</span>
+              </label>
             </div>
-          </label>
+
+            <div class="micro-break-variant-block">
+              <div class="micro-break-variant-copy">
+                <span class="settings-label settings-label--small">Variante</span>
+                <p class="micro-break-variant-note">Waehle, ob innerhalb eines Pomodoros einmal oder zweimal kurz unterbrochen wird.</p>
+              </div>
+
+              <div class="settings-input-wrap settings-input-wrap--select">
+                <select id="settings-micro-break-variant" name="microBreakVariant" aria-label="Mikropausen Variante">
+                  <option value="A">Variante A - einmal kurz bei ca. 50%</option>
+                  <option value="B">Variante B - zweimal kurz bei ca. 40% und 78%</option>
+                </select>
+              </div>
+            </div>
+          </section>
 
           <div class="settings-actions">
             <button class="secondary-action secondary-action--dark" id="settings-reset-defaults" type="button">Standard</button>
