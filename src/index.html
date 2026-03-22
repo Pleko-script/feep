@@ -167,6 +167,24 @@
             </div>
           </label>
 
+          <label class="settings-field settings-field--toggle">
+            <span class="settings-label">Mikropausen</span>
+            <div class="settings-toggle-row">
+              <span class="settings-help">Kurze automatische Sekundenpausen waehrend eines Pomodoros</span>
+              <input id="settings-micro-breaks-enabled" name="microBreaksEnabled" type="checkbox" />
+            </div>
+          </label>
+
+          <label class="settings-field">
+            <span class="settings-label">Variante</span>
+            <div class="settings-input-wrap">
+              <select id="settings-micro-break-variant" name="microBreakVariant">
+                <option value="A">A · einmal kurz bei ca. 50%</option>
+                <option value="B">B · zweimal kurz bei ca. 40% und 78%</option>
+              </select>
+            </div>
+          </label>
+
           <div class="settings-actions">
             <button class="secondary-action secondary-action--dark" id="settings-reset-defaults" type="button">Standard</button>
             <button class="primary-action primary-action--compact" type="submit">Speichern</button>

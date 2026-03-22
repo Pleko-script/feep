@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS = {
   pomodoro: 25,
   shortBreak: 5,
   longBreak: 15,
+  microBreaksEnabled: false,
+  microBreakVariant: "A",
 };
 
 const STORAGE_KEY = "pomofocus-state-v1";
@@ -32,6 +34,8 @@ const state = {
   remainingByMode: createModeSecondsMap(DEFAULT_SETTINGS),
   isRunning: false,
   isTimeHidden: false,
+  activeMicroBreak: null,
+  nextMicroBreakIndex: 0,
   completedPomodoros: 0,
   completedDate: getTodayKey(),
   intervalId: null,
@@ -125,6 +129,20 @@ function playCompleteSound() {
   ]);
 }
 
+function playMicroBreakStartSound() {
+  playToneSequence([
+    { frequency: 740, duration: 0.09, gap: 0.03, volume: 0.04, type: "sine" },
+    { frequency: 740, duration: 0.09, volume: 0.04, type: "sine" },
+  ]);
+}
+
+function playMicroBreakEndSound() {
+  playToneSequence([
+    { frequency: 932, duration: 0.1, gap: 0.03, volume: 0.04, type: "triangle" },
+    { frequency: 1174, duration: 0.13, volume: 0.045, type: "triangle" },
+  ]);
+}
+
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
     .toString()
@@ -191,6 +209,48 @@ function clampNumber(value, fallback, min, max) {
 
 function getModeSeconds(mode) {
   return (settings[mode] ?? DEFAULT_SETTINGS[mode]) * 60;
+}
+
+function getMicroBreakSchedule(mode = state.mode, sourceSettings = settings) {
+  if (mode !== "pomodoro" || !sourceSettings.microBreaksEnabled) {
+    return [];
+  }
+
+  const pomodoroSeconds = getModeSecondsForSettings("pomodoro", sourceSettings);
+  const variant = sourceSettings.microBreakVariant === "B" ? "B" : "A";
+  const variantADuration = Math.min(60, Math.max(20, Math.round(pomodoroSeconds * 0.02)));
+  const variantBDuration = Math.min(45, Math.max(20, Math.round(pomodoroSeconds * 0.015)));
+
+  if (variant === "B") {
+    return [
+      { triggerSeconds: Math.round(pomodoroSeconds * 0.4), durationSeconds: variantBDuration },
+      { triggerSeconds: Math.round(pomodoroSeconds * 0.78), durationSeconds: variantBDuration },
+    ].filter((item, index, items) => item.triggerSeconds > 0 && (index === 0 || item.triggerSeconds > items[index - 1].triggerSeconds));
+  }
+
+  return [{ triggerSeconds: Math.round(pomodoroSeconds * 0.5), durationSeconds: variantADuration }];
+}
+
+function getCurrentMicroBreakRemaining() {
+  if (!state.activeMicroBreak?.endsAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((state.activeMicroBreak.endsAt - Date.now()) / 1000));
+}
+
+function syncNextMicroBreakIndexForPomodoro() {
+  if (state.mode !== "pomodoro") {
+    state.nextMicroBreakIndex = 0;
+    return;
+  }
+
+  if (state.activeMicroBreak) {
+    return;
+  }
+
+  const elapsedSeconds = getModeSeconds("pomodoro") - state.remainingSeconds;
+  state.nextMicroBreakIndex = getMicroBreakSchedule().filter((item) => elapsedSeconds >= item.triggerSeconds).length;
 }
 
 function getModeSecondsForSettings(mode, sourceSettings = settings) {
@@ -547,6 +607,8 @@ function loadSettings() {
       pomodoro: clampNumber(parsed.pomodoro, DEFAULT_SETTINGS.pomodoro, 1, 180),
       shortBreak: clampNumber(parsed.shortBreak, DEFAULT_SETTINGS.shortBreak, 1, 60),
       longBreak: clampNumber(parsed.longBreak, DEFAULT_SETTINGS.longBreak, 1, 120),
+      microBreaksEnabled: Boolean(parsed.microBreaksEnabled),
+      microBreakVariant: parsed.microBreakVariant === "B" ? "B" : "A",
     };
   } catch {
     settings = { ...DEFAULT_SETTINGS };
@@ -563,6 +625,9 @@ function syncSettingsForm() {
   elements.settingsPomodoro.value = String(settings.pomodoro);
   elements.settingsShortBreak.value = String(settings.shortBreak);
   elements.settingsLongBreak.value = String(settings.longBreak);
+  elements.settingsMicroBreaksEnabled.checked = settings.microBreaksEnabled;
+  elements.settingsMicroBreakVariant.value = settings.microBreakVariant;
+  elements.settingsMicroBreakVariant.disabled = !settings.microBreaksEnabled;
 }
 
 function applySettings(nextSettings) {
@@ -570,11 +635,15 @@ function applySettings(nextSettings) {
     pomodoro: clampNumber(nextSettings.pomodoro, DEFAULT_SETTINGS.pomodoro, 1, 180),
     shortBreak: clampNumber(nextSettings.shortBreak, DEFAULT_SETTINGS.shortBreak, 1, 60),
     longBreak: clampNumber(nextSettings.longBreak, DEFAULT_SETTINGS.longBreak, 1, 120),
+    microBreaksEnabled: Boolean(nextSettings.microBreaksEnabled),
+    microBreakVariant: nextSettings.microBreakVariant === "B" ? "B" : "A",
   };
 
   stopInterval();
   state.isRunning = false;
   state.targetTime = null;
+  state.activeMicroBreak = null;
+  state.nextMicroBreakIndex = 0;
   resetAllModeRemaining();
   saveSettings();
   syncSettingsForm();
@@ -601,6 +670,8 @@ function saveState() {
     remainingByMode: state.remainingByMode,
     isRunning: state.isRunning,
     isTimeHidden: state.isTimeHidden,
+    activeMicroBreak: state.activeMicroBreak,
+    nextMicroBreakIndex: state.nextMicroBreakIndex,
     completedPomodoros: state.completedPomodoros,
     completedDate: state.completedDate,
     targetTime: state.targetTime,
@@ -641,6 +712,18 @@ function hydrateState() {
 
     state.mode = MODES[savedState.mode] ? savedState.mode : "pomodoro";
     state.isTimeHidden = Boolean(savedState.isTimeHidden);
+    state.nextMicroBreakIndex = Number.isInteger(savedState.nextMicroBreakIndex) ? savedState.nextMicroBreakIndex : 0;
+    state.activeMicroBreak =
+      savedState.activeMicroBreak &&
+      typeof savedState.activeMicroBreak === "object" &&
+      typeof savedState.activeMicroBreak.endsAt === "number" &&
+      typeof savedState.activeMicroBreak.resumeRemainingSeconds === "number"
+        ? {
+            endsAt: savedState.activeMicroBreak.endsAt,
+            resumeRemainingSeconds: clampModeRemaining("pomodoro", savedState.activeMicroBreak.resumeRemainingSeconds),
+            label: savedState.activeMicroBreak.label === "B2" ? "B2" : savedState.activeMicroBreak.label === "B1" ? "B1" : "A",
+          }
+        : null;
     state.completedDate = savedState.completedDate || getTodayKey();
     state.completedPomodoros = Number(savedState.completedPomodoros) || 0;
     state.remainingByMode = {
@@ -660,7 +743,17 @@ function hydrateState() {
 
     syncDailyCount();
 
-    if (savedState.isRunning && typeof savedState.targetTime === "number") {
+    if (state.activeMicroBreak) {
+      if (state.activeMicroBreak.endsAt > Date.now()) {
+        state.remainingSeconds = state.activeMicroBreak.resumeRemainingSeconds;
+        state.intervalId = window.setInterval(tick, 250);
+      } else {
+        state.activeMicroBreak = null;
+        state.remainingSeconds = state.remainingByMode[state.mode];
+      }
+      state.targetTime = null;
+      state.isRunning = false;
+    } else if (savedState.isRunning && typeof savedState.targetTime === "number") {
       state.targetTime = savedState.targetTime;
       state.isRunning = savedState.targetTime > Date.now();
 
@@ -696,15 +789,20 @@ function hydrateState() {
       state.isRunning = false;
       state.remainingSeconds = state.remainingByMode[state.mode];
     }
+
+    syncNextMicroBreakIndexForPomodoro();
   } catch {
     state.mode = "pomodoro";
     state.remainingByMode = createModeSecondsMap();
     state.remainingSeconds = state.remainingByMode[state.mode];
     state.isRunning = false;
     state.isTimeHidden = false;
+    state.activeMicroBreak = null;
+    state.nextMicroBreakIndex = 0;
     state.completedPomodoros = 0;
     state.completedDate = getTodayKey();
     state.targetTime = null;
+    syncNextMicroBreakIndexForPomodoro();
   }
 
   render();
@@ -718,6 +816,10 @@ function stopInterval() {
   }
 }
 
+function cancelMicroBreak() {
+  state.activeMicroBreak = null;
+}
+
 function syncRemainingTime() {
   if (!state.isRunning || !state.targetTime) {
     return;
@@ -728,28 +830,79 @@ function syncRemainingTime() {
   syncCurrentModeRemaining();
 }
 
+function maybeTriggerMicroBreak() {
+  if (!state.isRunning || state.mode !== "pomodoro" || state.activeMicroBreak) {
+    return false;
+  }
+
+  const schedule = getMicroBreakSchedule();
+  const nextBreak = schedule[state.nextMicroBreakIndex];
+
+  if (!nextBreak) {
+    return false;
+  }
+
+  const elapsedSeconds = getModeSeconds("pomodoro") - state.remainingSeconds;
+
+  if (elapsedSeconds < nextBreak.triggerSeconds) {
+    return false;
+  }
+
+  playMicroBreakStartSound();
+  stopInterval();
+  state.isRunning = false;
+  state.targetTime = null;
+  state.activeMicroBreak = {
+    endsAt: Date.now() + nextBreak.durationSeconds * 1000,
+    resumeRemainingSeconds: state.remainingSeconds,
+    label: settings.microBreakVariant === "B" ? `B${state.nextMicroBreakIndex + 1}` : "A",
+  };
+  state.nextMicroBreakIndex += 1;
+  state.intervalId = window.setInterval(tick, 250);
+  render();
+  saveState();
+  return true;
+}
+
+function completeMicroBreak() {
+  if (!state.activeMicroBreak) {
+    return;
+  }
+
+  const resumeRemainingSeconds = state.activeMicroBreak.resumeRemainingSeconds;
+  cancelMicroBreak();
+  playMicroBreakEndSound();
+  state.remainingSeconds = resumeRemainingSeconds;
+  startTimer({ silent: true });
+}
+
 function render() {
   syncDailyCount();
-  syncRemainingTime();
+  if (state.activeMicroBreak) {
+    state.remainingSeconds = state.activeMicroBreak.resumeRemainingSeconds;
+  } else {
+    syncRemainingTime();
+  }
 
   const activeMode = MODES[state.mode];
   const totalSeconds = getModeSeconds(state.mode);
   const progress = ((totalSeconds - state.remainingSeconds) / totalSeconds) * 100;
-  const statusText = state.isRunning ? "Läuft" : "Pausiert";
+  const statusText = state.activeMicroBreak ? "Mikropause" : state.isRunning ? "Läuft" : "Pausiert";
   const hideTime = state.isTimeHidden;
+  const displayedTime = state.activeMicroBreak ? formatTime(getCurrentMicroBreakRemaining()) : formatTime(state.remainingSeconds);
 
-  elements.timerDisplay.textContent = formatTime(state.remainingSeconds);
-  elements.modeCaption.textContent = activeMode.caption;
+  elements.timerDisplay.textContent = displayedTime;
+  elements.modeCaption.textContent = state.activeMicroBreak ? `Kurz stoppen · Variante ${state.activeMicroBreak.label}` : activeMode.caption;
   elements.timerStatusLabel.textContent = statusText;
-  elements.timerStatus.dataset.state = state.isRunning ? "running" : "paused";
+  elements.timerStatus.dataset.state = state.activeMicroBreak ? "micro-break" : state.isRunning ? "running" : "paused";
   elements.timerStatus.setAttribute("aria-label", `Timer ist ${statusText}`);
   elements.timerStatus.hidden = !hideTime;
-  elements.startPauseBtn.textContent = state.isRunning ? "Pause" : "Start";
+  elements.startPauseBtn.textContent = state.activeMicroBreak ? "Weiter" : state.isRunning ? "Pause" : "Start";
   elements.toggleFocusModeBtn.textContent = hideTime ? "Zeit zeigen" : "Zeit verbergen";
   elements.progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
   elements.progressRail.hidden = hideTime;
   elements.timerDisplay.hidden = hideTime;
-  document.title = hideTime ? `${statusText} · ${activeMode.label}` : `${formatTime(state.remainingSeconds)} · ${activeMode.label}`;
+  document.title = hideTime ? `${statusText} · ${activeMode.label}` : `${displayedTime} · ${activeMode.label}`;
 
   elements.modeTabs.forEach((tab) => {
     const isActive = tab.dataset.mode === state.mode;
@@ -764,10 +917,12 @@ function switchMode(mode) {
   syncRemainingTime();
   syncCurrentModeRemaining();
   stopInterval();
+  cancelMicroBreak();
   state.mode = mode;
   state.remainingSeconds = state.remainingByMode[mode];
   state.targetTime = null;
   state.isRunning = false;
+  syncNextMicroBreakIndexForPomodoro();
   render();
   saveState();
 }
@@ -778,6 +933,7 @@ function completeSession() {
   stopInterval();
   state.isRunning = false;
   state.targetTime = null;
+  cancelMicroBreak();
   state.remainingSeconds = 0;
   setModeRemaining(completedMode, 0);
   playCompleteSound();
@@ -801,7 +957,21 @@ function completeSession() {
 }
 
 function tick() {
+  if (state.activeMicroBreak) {
+    if (getCurrentMicroBreakRemaining() <= 0) {
+      completeMicroBreak();
+      return;
+    }
+
+    render();
+    return;
+  }
+
   syncRemainingTime();
+
+  if (maybeTriggerMicroBreak()) {
+    return;
+  }
 
   if (state.remainingSeconds <= 0) {
     completeSession();
@@ -811,12 +981,25 @@ function tick() {
   render();
 }
 
-function startTimer() {
+function startTimer(options = {}) {
+  if (state.activeMicroBreak) {
+    completeMicroBreak();
+    return;
+  }
+
   if (state.isRunning) {
     return;
   }
 
-  playStartSound();
+  if (state.mode === "pomodoro" && state.remainingSeconds === getModeSeconds("pomodoro")) {
+    state.nextMicroBreakIndex = 0;
+  } else if (state.mode === "pomodoro") {
+    syncNextMicroBreakIndexForPomodoro();
+  }
+
+  if (!options.silent) {
+    playStartSound();
+  }
   state.isRunning = true;
   state.targetTime = Date.now() + state.remainingSeconds * 1000;
   ensureNotificationPermission();
@@ -826,6 +1009,16 @@ function startTimer() {
 }
 
 function pauseTimer() {
+  if (state.activeMicroBreak) {
+    cancelMicroBreak();
+    stopInterval();
+    state.remainingSeconds = state.remainingByMode[state.mode];
+    syncNextMicroBreakIndexForPomodoro();
+    render();
+    saveState();
+    return;
+  }
+
   if (!state.isRunning) {
     return;
   }
@@ -852,7 +1045,9 @@ function resetTimer() {
   stopInterval();
   state.isRunning = false;
   state.targetTime = null;
+  cancelMicroBreak();
   resetModeRemaining(state.mode);
+  syncNextMicroBreakIndexForPomodoro();
   render();
   saveState();
 }
@@ -925,6 +1120,8 @@ function handleSettingsSubmit(event) {
     pomodoro: formData.get("pomodoro"),
     shortBreak: formData.get("shortBreak"),
     longBreak: formData.get("longBreak"),
+    microBreaksEnabled: formData.get("microBreaksEnabled") === "on",
+    microBreakVariant: formData.get("microBreakVariant"),
   });
   closeModal();
 }
@@ -933,6 +1130,9 @@ function resetSettingsInputs() {
   elements.settingsPomodoro.value = String(DEFAULT_SETTINGS.pomodoro);
   elements.settingsShortBreak.value = String(DEFAULT_SETTINGS.shortBreak);
   elements.settingsLongBreak.value = String(DEFAULT_SETTINGS.longBreak);
+  elements.settingsMicroBreaksEnabled.checked = DEFAULT_SETTINGS.microBreaksEnabled;
+  elements.settingsMicroBreakVariant.value = DEFAULT_SETTINGS.microBreakVariant;
+  elements.settingsMicroBreakVariant.disabled = !DEFAULT_SETTINGS.microBreaksEnabled;
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -962,6 +1162,8 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.settingsPomodoro = document.querySelector("#settings-pomodoro");
   elements.settingsShortBreak = document.querySelector("#settings-short-break");
   elements.settingsLongBreak = document.querySelector("#settings-long-break");
+  elements.settingsMicroBreaksEnabled = document.querySelector("#settings-micro-breaks-enabled");
+  elements.settingsMicroBreakVariant = document.querySelector("#settings-micro-break-variant");
   elements.settingsResetDefaults = document.querySelector("#settings-reset-defaults");
 
   loadSettings();
@@ -978,6 +1180,9 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.periodNext.addEventListener("click", () => shiftReportPeriod(1));
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);
   elements.settingsResetDefaults.addEventListener("click", resetSettingsInputs);
+  elements.settingsMicroBreaksEnabled.addEventListener("change", () => {
+    elements.settingsMicroBreakVariant.disabled = !elements.settingsMicroBreaksEnabled.checked;
+  });
 
   document.addEventListener("click", (event) => {
     const closeTrigger = event.target.closest("[data-close-modal]");
