@@ -2,17 +2,17 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pomofocus</title>
-    <script type="module" src="/main.js" defer></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./main.ts" defer></script>
   </head>
 
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Fokus-Timer für konzentriertes Arbeiten</p>
+          <p class="eyebrow">Fokus-Timer fuer konzentriertes Arbeiten</p>
           <h1>Pomofocus</h1>
         </div>
         <div class="topbar-actions">
@@ -46,10 +46,10 @@
 
         <div class="controls">
           <button class="primary-action" id="start-pause-btn" type="button">Start</button>
-          <button class="secondary-action" id="reset-btn" type="button">Zurücksetzen</button>
+          <button class="secondary-action" id="reset-btn" type="button">Zuruecksetzen</button>
           <button class="secondary-action" id="toggle-focus-mode-btn" type="button">Zeit verbergen</button>
         </div>
-        <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurück.</p>
+        <p class="timer-note">Leertaste startet oder pausiert, `R` setzt den aktuellen Modus zurueck.</p>
       </section>
     </main>
 
@@ -58,10 +58,10 @@
       <section class="modal-card modal-card--report" role="dialog" aria-modal="true" aria-labelledby="report-title">
         <div class="modal-topbar">
           <div class="section-heading">
-            <h2 id="report-title">Aktivitätsübersicht</h2>
+            <h2 id="report-title">Aktivitaetsuebersicht</h2>
             <div class="section-line"></div>
           </div>
-          <button class="modal-close" type="button" data-close-modal="report" aria-label="Bericht schließen">&times;</button>
+          <button class="modal-close" type="button" data-close-modal="report" aria-label="Bericht schliessen">&times;</button>
         </div>
 
         <div class="summary-grid">
@@ -106,7 +106,7 @@
         </div>
 
         <div class="chart-toolbar">
-          <div class="range-switch" role="tablist" aria-label="Zeitraum wählen">
+          <div class="range-switch" role="tablist" aria-label="Zeitraum waehlen">
             <button class="range-tab is-active" type="button" data-range="week" role="tab" aria-selected="true">Woche</button>
             <button class="range-tab" type="button" data-range="month" role="tab" aria-selected="false">Monat</button>
             <button class="range-tab" type="button" data-range="year" role="tab" aria-selected="false">Jahr</button>
@@ -115,7 +115,7 @@
           <div class="period-nav">
             <button class="period-btn" id="period-prev" type="button" aria-label="Vorheriger Zeitraum">&lsaquo;</button>
             <p class="period-label" id="period-label">Diese Woche</p>
-            <button class="period-btn" id="period-next" type="button" aria-label="Nächster Zeitraum">&rsaquo;</button>
+            <button class="period-btn" id="period-next" type="button" aria-label="Naechster Zeitraum">&rsaquo;</button>
           </div>
         </div>
 
@@ -148,7 +148,7 @@
             <h2 id="settings-title">Einstellungen</h2>
             <div class="section-line"></div>
           </div>
-          <button class="modal-close" type="button" data-close-modal="settings" aria-label="Einstellungen schließen">&times;</button>
+          <button class="modal-close" type="button" data-close-modal="settings" aria-label="Einstellungen schliessen">&times;</button>
         </div>
 
         <form class="settings-form" id="settings-form">

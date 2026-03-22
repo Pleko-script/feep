@@ -1,6 +1,6 @@
 # Pomofocus
 
-A small desktop Pomodoro app built with Tauri 2, Rust, HTML, CSS, and vanilla JavaScript.
+A small desktop Pomodoro app built with Tauri 2, Rust, TypeScript, Vite, HTML, and CSS.
 
 ## Disclaimer
 
@@ -8,7 +8,7 @@ This project is completely vibe-coded.
 
 It was built as a fast, practical, good-enough solution for one specific use case. If you are looking for pristine architecture, layered abstractions, or long-term platform strategy, this repo is not trying to impress you.
 
-The goal was simple: make something that fits my workflow quickly and feels right to use. Please do not take the architecture too seriously.
+The goal was simple: make something that fits my workflow quickly and feels right to use. The app has since been cleaned up heavily on the frontend, but the original spirit is still the same.
 
 ## What It Does
 
@@ -25,9 +25,12 @@ The goal was simple: make something that fits my workflow quickly and feels righ
 
 - Tauri 2
 - Rust
+- TypeScript
+- Vite
+- Vitest
 - HTML
 - CSS
-- Vanilla JavaScript
+- Vanilla DOM
 
 ## Structure
 
@@ -35,7 +38,12 @@ The goal was simple: make something that fits my workflow quickly and feels righ
 src/
   index.html
   styles.css
-  main.js
+  main.ts
+  app/
+  domain/
+  infrastructure/
+  ui/
+  utils/
 
 src-tauri/
   src/lib.rs
@@ -46,17 +54,30 @@ src-tauri/
 
 Requirements:
 
+- Node.js
 - Rust
 - Tauri CLI
 - Microsoft WebView2 Runtime on Windows
 
-Install the Tauri CLI:
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Install the Tauri CLI if needed:
 
 ```powershell
 cargo install tauri-cli --version "^2.0"
 ```
 
-Start the app in development mode:
+Start the frontend in development mode:
+
+```powershell
+npm run dev
+```
+
+Or run the full desktop app:
 
 ```powershell
 cd src-tauri
@@ -65,7 +86,13 @@ cargo tauri dev
 
 ## Build
 
-Create a production build:
+Create a frontend production build:
+
+```powershell
+npm run build
+```
+
+Create the desktop production build:
 
 ```powershell
 cd src-tauri
@@ -87,10 +114,16 @@ cd src-tauri
 cargo check
 ```
 
-JavaScript syntax check:
+TypeScript check:
 
 ```powershell
-node --check src/main.js
+npm run typecheck
+```
+
+Test suite:
+
+```powershell
+npm test
 ```
 
 ## Local Storage
