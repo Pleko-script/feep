@@ -748,7 +748,7 @@ function render() {
   elements.toggleFocusModeBtn.textContent = hideTime ? "Zeit zeigen" : "Zeit verbergen";
   elements.progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
   elements.progressRail.hidden = hideTime;
-  elements.timerDisplay.classList.toggle("timer-display--hidden", hideTime);
+  elements.timerDisplay.hidden = hideTime;
   document.title = hideTime ? `${statusText} · ${activeMode.label}` : `${formatTime(state.remainingSeconds)} · ${activeMode.label}`;
 
   elements.modeTabs.forEach((tab) => {

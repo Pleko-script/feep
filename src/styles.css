@@ -189,15 +189,6 @@ h1 {
   color: var(--foreground);
 }
 
-.timer-display--hidden {
-  margin-bottom: 12px;
-  filter: blur(14px);
-  opacity: 0.58;
-  transform: scale(1.01);
-  text-shadow: 0 0 26px hsla(0, 0%, 100%, 0.22);
-  user-select: none;
-}
-
 .timer-status {
   display: inline-flex;
   align-items: center;
