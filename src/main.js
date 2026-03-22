@@ -49,6 +49,8 @@ const reportState = {
 
 const uiState = {
   openModal: null,
+  pendingCompletion: null,
+  completionAlarmId: null,
 };
 
 const elements = {};
@@ -127,6 +129,23 @@ function playCompleteSound() {
     { frequency: 988, duration: 0.12, gap: 0.025, volume: 0.045, type: "triangle" },
     { frequency: 1174, duration: 0.24, volume: 0.05, type: "triangle" },
   ]);
+}
+
+function stopCompletionAlarm() {
+  if (!uiState.completionAlarmId) {
+    return;
+  }
+
+  window.clearInterval(uiState.completionAlarmId);
+  uiState.completionAlarmId = null;
+}
+
+function startCompletionAlarm() {
+  stopCompletionAlarm();
+  playCompleteSound();
+  uiState.completionAlarmId = window.setInterval(() => {
+    playCompleteSound();
+  }, 1600);
 }
 
 function playMicroBreakStartSound() {
@@ -708,6 +727,30 @@ function showNotification(title, body) {
   new window.Notification(title, { body });
 }
 
+function openCompletionModal({ completedMode, nextMode, title, message }) {
+  uiState.pendingCompletion = { completedMode, nextMode };
+  elements.completionTitle.textContent = title;
+  elements.completionMessage.textContent = message;
+  startCompletionAlarm();
+  openModal("completion");
+}
+
+function acknowledgeCompletion() {
+  if (!uiState.pendingCompletion) {
+    return;
+  }
+
+  const { completedMode, nextMode } = uiState.pendingCompletion;
+  uiState.pendingCompletion = null;
+  stopCompletionAlarm();
+  uiState.openModal = null;
+  elements.completionModal.hidden = true;
+
+  resetModeRemaining(completedMode);
+  resetModeRemaining(nextMode);
+  switchMode(nextMode);
+}
+
 function hydrateState() {
   const rawState = window.localStorage.getItem(STORAGE_KEY);
 
@@ -958,24 +1001,28 @@ function completeSession() {
   cancelMicroBreak();
   state.remainingSeconds = 0;
   setModeRemaining(completedMode, 0);
-  playCompleteSound();
-
   if (completedMode === "pomodoro") {
     recordFocusSession(getModeSeconds("pomodoro"));
     state.completedPomodoros += 1;
 
     const nextMode = state.completedPomodoros % 4 === 0 ? "longBreak" : "shortBreak";
-    showNotification("Pomodoro abgeschlossen", `Wechsel zu ${MODES[nextMode].label}.`);
-    resetModeRemaining(completedMode);
-    resetModeRemaining(nextMode);
-    switchMode(nextMode);
+    showNotification("Pomodoro abgeschlossen", `${MODES[nextMode].label} ist bereit.`);
+    openCompletionModal({
+      completedMode,
+      nextMode,
+      title: "Pomodoro abgeschlossen",
+      message: `${MODES[nextMode].label} ist bereit. Bestaetige mit OK.`,
+    });
     return;
   }
 
   showNotification("Pause beendet", "Die nächste Fokuszeit ist bereit.");
-  resetModeRemaining(completedMode);
-  resetModeRemaining("pomodoro");
-  switchMode("pomodoro");
+  openCompletionModal({
+    completedMode,
+    nextMode: "pomodoro",
+    title: "Pause beendet",
+    message: "Die naechste Fokuszeit ist bereit. Bestaetige mit OK.",
+  });
 }
 
 function tick() {
@@ -1094,6 +1141,7 @@ function shiftReportPeriod(amount) {
 function openModal(name) {
   uiState.openModal = name;
   elements.reportModal.hidden = name !== "report";
+  elements.completionModal.hidden = name !== "completion";
   elements.settingsModal.hidden = name !== "settings";
 
   if (name === "report") {
@@ -1106,8 +1154,13 @@ function openModal(name) {
 }
 
 function closeModal() {
+  if (uiState.openModal === "completion") {
+    return;
+  }
+
   uiState.openModal = null;
   elements.reportModal.hidden = true;
+  elements.completionModal.hidden = true;
   elements.settingsModal.hidden = true;
 }
 
@@ -1115,7 +1168,7 @@ function handleKeydown(event) {
   const target = event.target;
   const isEditable = target instanceof HTMLElement && target.matches("input, textarea, select, [contenteditable='true']");
 
-  if (event.key === "Escape" && uiState.openModal) {
+  if (event.key === "Escape" && uiState.openModal && uiState.openModal !== "completion") {
     closeModal();
     return;
   }
@@ -1171,6 +1224,10 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.openReportBtn = document.querySelector("#open-report-btn");
   elements.openSettingsBtn = document.querySelector("#open-settings-btn");
   elements.reportModal = document.querySelector("#report-modal");
+  elements.completionModal = document.querySelector("#completion-modal");
+  elements.completionTitle = document.querySelector("#completion-title");
+  elements.completionMessage = document.querySelector("#completion-message");
+  elements.completionOkBtn = document.querySelector("#completion-ok-btn");
   elements.settingsModal = document.querySelector("#settings-modal");
   elements.hoursFocused = document.querySelector("#hours-focused");
   elements.daysAccessed = document.querySelector("#days-accessed");
@@ -1200,6 +1257,7 @@ window.addEventListener("DOMContentLoaded", () => {
   elements.toggleFocusModeBtn.addEventListener("click", toggleFocusMode);
   elements.openReportBtn.addEventListener("click", () => openModal("report"));
   elements.openSettingsBtn.addEventListener("click", () => openModal("settings"));
+  elements.completionOkBtn.addEventListener("click", acknowledgeCompletion);
   elements.periodPrev.addEventListener("click", () => shiftReportPeriod(-1));
   elements.periodNext.addEventListener("click", () => shiftReportPeriod(1));
   elements.settingsForm.addEventListener("submit", handleSettingsSubmit);

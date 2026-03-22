@@ -130,6 +130,16 @@
       </section>
     </div>
 
+    <div class="overlay" id="completion-modal" hidden>
+      <div class="overlay-backdrop"></div>
+      <section class="modal-card modal-card--completion" role="dialog" aria-modal="true" aria-labelledby="completion-title">
+        <div class="completion-pill">Timer fertig</div>
+        <h2 id="completion-title" class="completion-title">Pomodoro abgeschlossen</h2>
+        <p class="completion-copy" id="completion-message">Zeit fuer die naechste Phase.</p>
+        <button class="primary-action" id="completion-ok-btn" type="button">OK</button>
+      </section>
+    </div>
+
     <div class="overlay" id="settings-modal" hidden>
       <div class="overlay-backdrop" data-close-modal="settings"></div>
       <section class="modal-card modal-card--settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
