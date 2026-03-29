@@ -2,6 +2,8 @@ import type { ToneDefinition } from "@/app/types";
 
 export class AudioService {
   private audioContext: AudioContext | null = null;
+  private idleSuspendTimeoutId: number | null = null;
+  private completionAlarmActive = false;
 
   public playStart(): void {
     this.playToneSequence([
@@ -44,6 +46,8 @@ export class AudioService {
       return null;
     }
 
+    this.completionAlarmActive = true;
+    this.clearIdleSuspendTimer();
     this.playComplete();
     return window.setInterval(() => {
       this.playComplete();
@@ -56,6 +60,8 @@ export class AudioService {
     }
 
     window.clearInterval(alarmId);
+    this.completionAlarmActive = false;
+    this.scheduleIdleSuspend();
   }
 
   private getAudioContext(): AudioContext | null {
@@ -84,8 +90,10 @@ export class AudioService {
 
     const startAt = Math.max(context.currentTime, 0.01);
 
+    this.clearIdleSuspendTimer();
+
     if (context.state === "suspended") {
-      context.resume().catch(() => undefined);
+      void context.resume().catch(() => undefined);
     }
 
     sequence.reduce((offset, tone) => {
@@ -110,5 +118,33 @@ export class AudioService {
 
       return offset + tone.duration + (tone.gap ?? 0);
     }, 0);
+
+    this.scheduleIdleSuspend();
+  }
+
+  private scheduleIdleSuspend(): void {
+    if (!this.audioContext || this.completionAlarmActive) {
+      return;
+    }
+
+    this.clearIdleSuspendTimer();
+    this.idleSuspendTimeoutId = window.setTimeout(() => {
+      this.idleSuspendTimeoutId = null;
+
+      if (!this.audioContext || this.completionAlarmActive || this.audioContext.state !== "running") {
+        return;
+      }
+
+      void this.audioContext.suspend().catch(() => undefined);
+    }, 15_000);
+  }
+
+  private clearIdleSuspendTimer(): void {
+    if (this.idleSuspendTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(this.idleSuspendTimeoutId);
+    this.idleSuspendTimeoutId = null;
   }
 }

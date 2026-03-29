@@ -93,7 +93,6 @@ pub fn run() {
                 hide_main_window(window);
             }
         })
-        .plugin(tauri_plugin_opener::init())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

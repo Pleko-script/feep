@@ -1,16 +1,41 @@
 import type { AnalyticsEntry, AnalyticsState, ChartDataset, ChartPoint, ReportState, ReportViewModel } from "@/app/types";
 import { addDays, addMonths, addYears, getTodayKey, parseDateKey, startOfMonth, startOfWeek, startOfYear, toDateKey } from "@/utils/date";
 
-function createGermanNumberFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  return new Intl.NumberFormat("de-DE", options);
-}
-
 function createEmptyEntry(): AnalyticsEntry {
   return {
     focusedSeconds: 0,
     accessed: false,
   };
 }
+
+const SUMMARY_HOURS_FORMATTER = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+const INTEGER_NUMBER_FORMATTER = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+
+const DECIMAL_NUMBER_FORMATTER = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+const WEEK_DATE_FORMATTER = new Intl.DateTimeFormat("de-DE", {
+  month: "short",
+  day: "numeric",
+});
+
+const YEAR_MONTH_FORMATTER = new Intl.DateTimeFormat("de-DE", {
+  month: "short",
+});
+
+const MONTH_PERIOD_FORMATTER = new Intl.DateTimeFormat("de-DE", {
+  month: "long",
+  year: "numeric",
+});
 
 export class ReportService {
   private analytics: AnalyticsState;
@@ -196,34 +221,23 @@ function cloneAnalyticsState(analytics: AnalyticsState): AnalyticsState {
 }
 
 function formatSummaryHours(hours: number): string {
-  return createGermanNumberFormatter({
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(hours);
+  return SUMMARY_HOURS_FORMATTER.format(hours);
 }
 
 function formatAxisValue(value: number): string {
-  return createGermanNumberFormatter({
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 1,
-  }).format(value);
+  return (value % 1 === 0 ? INTEGER_NUMBER_FORMATTER : DECIMAL_NUMBER_FORMATTER).format(value);
 }
 
 function formatDateLabel(date: Date, range: ReportState["range"]): string {
   if (range === "week") {
-    return new Intl.DateTimeFormat("de-DE", {
-      month: "short",
-      day: "numeric",
-    }).format(date);
+    return WEEK_DATE_FORMATTER.format(date);
   }
 
   if (range === "month") {
     return String(date.getDate());
   }
 
-  return new Intl.DateTimeFormat("de-DE", {
-    month: "short",
-  }).format(date);
+  return YEAR_MONTH_FORMATTER.format(date);
 }
 
 function formatPeriodLabel(startDate: Date, endDate: Date, range: ReportState["range"], offset: number): string {
@@ -232,18 +246,11 @@ function formatPeriodLabel(startDate: Date, endDate: Date, range: ReportState["r
       return "Diese Woche";
     }
 
-    const formatter = new Intl.DateTimeFormat("de-DE", {
-      month: "short",
-      day: "numeric",
-    });
-    return `${formatter.format(startDate)} - ${formatter.format(endDate)}`;
+    return `${WEEK_DATE_FORMATTER.format(startDate)} - ${WEEK_DATE_FORMATTER.format(endDate)}`;
   }
 
   if (range === "month") {
-    return new Intl.DateTimeFormat("de-DE", {
-      month: "long",
-      year: "numeric",
-    }).format(startDate);
+    return MONTH_PERIOD_FORMATTER.format(startDate);
   }
 
   return String(startDate.getFullYear());

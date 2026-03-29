@@ -3,14 +3,22 @@ import { normalizeStoredAnalytics, normalizeStoredSettings, normalizeStoredTimer
 import { ANALYTICS_KEY, SETTINGS_KEY, STORAGE_KEY } from "@/infrastructure/storage/storage-keys";
 
 export class StorageService {
-  public constructor(private readonly storage: Storage) {}
+  private readonly serializedCache: Record<string, string | null>;
+
+  public constructor(private readonly storage: Storage) {
+    this.serializedCache = {
+      [STORAGE_KEY]: this.storage.getItem(STORAGE_KEY),
+      [ANALYTICS_KEY]: this.storage.getItem(ANALYTICS_KEY),
+      [SETTINGS_KEY]: this.storage.getItem(SETTINGS_KEY),
+    };
+  }
 
   public loadSettings(): AppSettings {
     return normalizeStoredSettings(parseStoredJson(this.storage.getItem(SETTINGS_KEY)));
   }
 
   public saveSettings(settings: AppSettings): void {
-    this.storage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    this.writeSerialized(SETTINGS_KEY, JSON.stringify(settings));
   }
 
   public loadAnalytics(): AnalyticsState {
@@ -30,7 +38,7 @@ export class StorageService {
       ),
     };
 
-    this.storage.setItem(ANALYTICS_KEY, JSON.stringify(storedAnalytics));
+    this.writeSerialized(ANALYTICS_KEY, JSON.stringify(storedAnalytics));
   }
 
   public loadTimerState(settings: AppSettings): StoredTimerState | null {
@@ -51,6 +59,15 @@ export class StorageService {
       targetTime: timerState.targetTime,
     };
 
-    this.storage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    this.writeSerialized(STORAGE_KEY, JSON.stringify(snapshot));
+  }
+
+  private writeSerialized(key: string, value: string): void {
+    if (this.serializedCache[key] === value) {
+      return;
+    }
+
+    this.storage.setItem(key, value);
+    this.serializedCache[key] = value;
   }
 }

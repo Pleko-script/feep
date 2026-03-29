@@ -149,6 +149,18 @@ export class TimerService {
     return remainingMilliseconds;
   }
 
+  public getNextTickDelay(now: number = this.now()): number | null {
+    if (this.state.activeMicroBreak) {
+      return getNextVisibleSecondDelay(this.state.activeMicroBreak.endsAt, now);
+    }
+
+    if (!this.state.isRunning || !this.state.targetTime) {
+      return null;
+    }
+
+    return getNextVisibleSecondDelay(this.state.targetTime, now);
+  }
+
   public start(): StartResult {
     if (this.state.activeMicroBreak) {
       this.completeMicroBreak();
@@ -286,4 +298,16 @@ export class TimerService {
     this.state.targetTime = this.now() + resumeRemainingSeconds * 1000;
     syncCurrentModeRemaining(this.state, this.settings);
   }
+}
+
+function getNextVisibleSecondDelay(targetTime: number, now: number): number {
+  const remainingMilliseconds = getRemainingMilliseconds(targetTime, now);
+
+  if (remainingMilliseconds <= 0) {
+    return 50;
+  }
+
+  const remainder = remainingMilliseconds % 1000;
+  const delay = remainder === 0 ? 1000 : remainder;
+  return Math.max(50, Math.min(1000, delay));
 }

@@ -42,4 +42,22 @@ describe("TimerService", () => {
 
     expect(timerService.getState().remainingSeconds).toBe(pomodoroRemaining);
   });
+
+  it("computes the next tick delay from the next visible second boundary", () => {
+    let now = 1_000;
+    const settings = normalizeSettings({
+      pomodoro: 1,
+    });
+    const timerService = new TimerService(settings, () => now);
+
+    timerService.start();
+
+    now += 250;
+
+    expect(timerService.getNextTickDelay()).toBe(750);
+
+    now += 750;
+
+    expect(timerService.getNextTickDelay()).toBe(1_000);
+  });
 });

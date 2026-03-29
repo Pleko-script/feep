@@ -26,7 +26,7 @@ import { getTodayKey } from "@/utils/date";
 export class AppController {
   private readonly reportState = { ...DEFAULT_REPORT_STATE };
   private readonly uiState = { ...DEFAULT_UI_STATE };
-  private tickIntervalId: number | null = null;
+  private tickTimeoutId: number | null = null;
 
   public constructor(
     private readonly elements: AppElements,
@@ -49,12 +49,12 @@ export class AppController {
       this.applyRecoveredCompletion(hydration);
     }
 
+    this.renderAll();
+    this.persistAll();
+
     if (hydration.shouldResumeTicker) {
       this.startTicking();
     }
-
-    this.renderAll();
-    this.persistAll();
   }
 
   public toggleTimer(): void {
@@ -72,7 +72,7 @@ export class AppController {
       }
 
       this.stopTicking();
-      this.renderAll();
+      this.renderTimerPanel();
       this.persistTimerState();
       return;
     }
@@ -92,9 +92,9 @@ export class AppController {
     }
 
     this.notificationService.ensurePermission();
-    this.startTicking();
-    this.renderAll();
+    this.renderTimerPanel();
     this.persistTimerState();
+    this.startTicking();
   }
 
   public resetTimer(): void {
@@ -104,7 +104,7 @@ export class AppController {
 
     this.stopTicking();
     this.timerService.resetCurrentMode();
-    this.renderAll();
+    this.renderTimerPanel();
     this.persistTimerState();
   }
 
@@ -115,13 +115,13 @@ export class AppController {
 
     this.stopTicking();
     this.timerService.switchMode(mode);
-    this.renderAll();
+    this.renderTimerPanel();
     this.persistTimerState();
   }
 
   public toggleFocusMode(): void {
     this.timerService.toggleFocusMode();
-    this.renderAll();
+    this.renderTimerPanel();
     this.persistTimerState();
   }
 
@@ -134,11 +134,11 @@ export class AppController {
     this.modalManager.open(name);
 
     if (name === "settings") {
-      renderSettingsForm(this.elements, this.settingsService.getSettings());
+      this.renderSettingsPanel(true);
     }
 
     if (name === "report") {
-      this.renderReportPanel();
+      this.renderReportPanel(true);
     }
   }
 
@@ -165,12 +165,12 @@ export class AppController {
   public setReportRange(range: ReportRange): void {
     this.reportState.range = range;
     this.reportState.offset = 0;
-    this.renderReportPanel();
+    this.renderReportPanel(true);
   }
 
   public shiftReportPeriod(amount: number): void {
     this.reportState.offset = Math.min(0, this.reportState.offset + amount);
-    this.renderReportPanel();
+    this.renderReportPanel(true);
   }
 
   public submitSettings(formData: FormData): void {
@@ -185,13 +185,13 @@ export class AppController {
     this.stopTicking();
     this.timerService.replaceSettings(nextSettings);
     this.storageService.saveSettings(nextSettings);
-    this.renderAll();
     this.closeModal();
+    this.renderAll();
     this.persistTimerState();
   }
 
   public resetSettingsInputs(defaultSettings: AppSettings): void {
-    renderSettingsForm(this.elements, defaultSettings);
+    this.renderSettingsPanel(true, defaultSettings);
   }
 
   public previewMicroBreakToggle(isEnabled: boolean): void {
@@ -230,8 +230,17 @@ export class AppController {
     }
 
     this.reportService.markAccess();
-    this.renderAll();
+    this.timerService.syncRemainingTime();
+    this.renderTimerPanel();
+    this.renderReportPanel();
     this.persistAnalytics();
+
+    if (this.timerService.getNextTickDelay() === null || this.uiState.openModal === "completion") {
+      this.stopTicking();
+      return;
+    }
+
+    this.startTicking();
   };
 
   public readonly handleBeforeUnload = (): void => {
@@ -242,17 +251,38 @@ export class AppController {
   private renderAll(): void {
     this.syncDailyState();
     this.timerService.syncRemainingTime();
-    renderTimer(this.elements, this.timerService.getState(), this.settingsService.getSettings(), this.doc);
+    this.renderTimerPanel();
     this.renderReportPanel();
-    renderSettingsForm(this.elements, this.settingsService.getSettings());
-
-    if (this.uiState.pendingCompletion) {
-      renderCompletionPrompt(this.elements, this.uiState.pendingCompletion);
-    }
+    this.renderSettingsPanel();
+    this.renderCompletionState();
   }
 
-  private renderReportPanel(): void {
+  private renderTimerPanel(): void {
+    renderTimer(this.elements, this.timerService.getState(), this.settingsService.getSettings(), this.doc);
+  }
+
+  private renderReportPanel(force: boolean = false): void {
+    if (!force && this.uiState.openModal !== "report") {
+      return;
+    }
+
     renderReport(this.elements, this.reportService.buildViewModel(this.reportState));
+  }
+
+  private renderSettingsPanel(force: boolean = false, settings: AppSettings = this.settingsService.getSettings()): void {
+    if (!force && this.uiState.openModal !== "settings") {
+      return;
+    }
+
+    renderSettingsForm(this.elements, settings);
+  }
+
+  private renderCompletionState(): void {
+    if (!this.uiState.pendingCompletion) {
+      return;
+    }
+
+    renderCompletionPrompt(this.elements, this.uiState.pendingCompletion);
   }
 
   private handleTick = (): void => {
@@ -269,10 +299,19 @@ export class AppController {
     if (result.type === "completed") {
       this.stopTicking();
       this.handleLiveCompletion(result.completedMode);
+      this.renderAll();
+      this.persistTimerState();
+      return;
     }
 
-    this.renderAll();
-    this.persistTimerState();
+    this.syncDailyState();
+    this.renderTimerPanel();
+
+    if (result.type !== "none") {
+      this.persistTimerState();
+    }
+
+    this.startTicking();
   };
 
   private handleLiveCompletion(completedMode: TimerMode): void {
@@ -282,8 +321,6 @@ export class AppController {
         : this.timerService.getState().completedPomodoros;
     const prompt = resolveCompletion(completedMode, completedPomodoros);
     this.notificationService.show(prompt.notificationTitle, prompt.notificationBody);
-    this.uiState.pendingCompletion = prompt;
-    renderCompletionPrompt(this.elements, prompt);
     this.openCompletionModal(prompt);
   }
 
@@ -312,6 +349,7 @@ export class AppController {
     this.uiState.pendingCompletion = prompt;
     this.uiState.completionAlarmId = this.audioService.startCompletionAlarmLoop();
     this.uiState.openModal = "completion";
+    this.renderCompletionState();
     this.modalManager.open("completion");
   }
 
@@ -320,28 +358,42 @@ export class AppController {
     this.uiState.completionAlarmId = null;
   }
 
-  private syncDailyState(): void {
+  private syncDailyState(): boolean {
     if (this.timerService.syncDailyCount()) {
       this.reportService.markAccess();
       this.persistAnalytics();
+      this.renderReportPanel();
+      return true;
     }
+
+    return false;
   }
 
   private startTicking(): void {
-    if (this.tickIntervalId !== null) {
-      return;
-    }
-
-    this.tickIntervalId = window.setInterval(this.handleTick, 250);
+    this.stopTicking();
+    this.scheduleNextTick();
   }
 
   private stopTicking(): void {
-    if (this.tickIntervalId === null) {
+    if (this.tickTimeoutId === null) {
       return;
     }
 
-    window.clearInterval(this.tickIntervalId);
-    this.tickIntervalId = null;
+    window.clearTimeout(this.tickTimeoutId);
+    this.tickTimeoutId = null;
+  }
+
+  private scheduleNextTick(): void {
+    const delay = this.uiState.openModal === "completion" ? null : this.timerService.getNextTickDelay();
+
+    if (delay === null) {
+      return;
+    }
+
+    this.tickTimeoutId = window.setTimeout(() => {
+      this.tickTimeoutId = null;
+      this.handleTick();
+    }, delay);
   }
 
   private persistTimerState(): void {
