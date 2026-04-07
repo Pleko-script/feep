@@ -23,10 +23,13 @@ import { renderMicroBreakSettingsState, renderSettingsForm } from "@/ui/renderer
 import { renderTimer } from "@/ui/renderers/timer-renderer";
 import { getTodayKey } from "@/utils/date";
 
+const IDLE_REMINDER_DELAY_MS = 3 * 60 * 1000;
+
 export class AppController {
   private readonly reportState = { ...DEFAULT_REPORT_STATE };
   private readonly uiState = { ...DEFAULT_UI_STATE };
   private tickTimeoutId: number | null = null;
+  private idleReminderTimeoutId: number | null = null;
 
   public constructor(
     private readonly elements: AppElements,
@@ -55,6 +58,8 @@ export class AppController {
     if (hydration.shouldResumeTicker) {
       this.startTicking();
     }
+
+    this.syncIdleReminder();
   }
 
   public toggleTimer(): void {
@@ -74,6 +79,7 @@ export class AppController {
       this.stopTicking();
       this.renderTimerPanel();
       this.persistTimerState();
+      this.syncIdleReminder();
       return;
     }
 
@@ -95,6 +101,7 @@ export class AppController {
     this.renderTimerPanel();
     this.persistTimerState();
     this.startTicking();
+    this.syncIdleReminder();
   }
 
   public resetTimer(): void {
@@ -106,6 +113,7 @@ export class AppController {
     this.timerService.resetCurrentMode();
     this.renderTimerPanel();
     this.persistTimerState();
+    this.syncIdleReminder();
   }
 
   public switchMode(mode: TimerMode): void {
@@ -117,12 +125,14 @@ export class AppController {
     this.timerService.switchMode(mode);
     this.renderTimerPanel();
     this.persistTimerState();
+    this.syncIdleReminder();
   }
 
   public toggleFocusMode(): void {
     this.timerService.toggleFocusMode();
     this.renderTimerPanel();
     this.persistTimerState();
+    this.syncIdleReminder();
   }
 
   public openModal(name: OpenModal): void {
@@ -160,6 +170,7 @@ export class AppController {
     this.timerService.applyCompletionTransition(prompt.completedMode, prompt.nextMode);
     this.renderAll();
     this.persistTimerState();
+    this.syncIdleReminder();
   }
 
   public setReportRange(range: ReportRange): void {
@@ -188,6 +199,7 @@ export class AppController {
     this.closeModal();
     this.renderAll();
     this.persistTimerState();
+    this.syncIdleReminder();
   }
 
   public resetSettingsInputs(defaultSettings: AppSettings): void {
@@ -234,6 +246,7 @@ export class AppController {
     this.renderTimerPanel();
     this.renderReportPanel();
     this.persistAnalytics();
+    this.syncIdleReminder();
 
     if (this.timerService.getNextTickDelay() === null || this.uiState.openModal === "completion") {
       this.stopTicking();
@@ -245,6 +258,7 @@ export class AppController {
 
   public readonly handleBeforeUnload = (): void => {
     this.timerService.syncRemainingTime();
+    this.stopIdleReminder();
     this.persistAll();
   };
 
@@ -301,6 +315,7 @@ export class AppController {
       this.handleLiveCompletion(result.completedMode);
       this.renderAll();
       this.persistTimerState();
+      this.syncIdleReminder();
       return;
     }
 
@@ -311,6 +326,7 @@ export class AppController {
       this.persistTimerState();
     }
 
+    this.syncIdleReminder();
     this.startTicking();
   };
 
@@ -351,11 +367,52 @@ export class AppController {
     this.uiState.openModal = "completion";
     this.renderCompletionState();
     this.modalManager.open("completion");
+    this.syncIdleReminder();
   }
 
   private stopCompletionAlarm(): void {
     this.audioService.stopCompletionAlarmLoop(this.uiState.completionAlarmId);
     this.uiState.completionAlarmId = null;
+  }
+
+  private syncIdleReminder(): void {
+    if (!this.shouldPlayIdleReminder()) {
+      this.stopIdleReminder();
+      return;
+    }
+
+    if (this.idleReminderTimeoutId !== null) {
+      return;
+    }
+
+    this.scheduleIdleReminder();
+  }
+
+  private shouldPlayIdleReminder(): boolean {
+    const state = this.timerService.getState();
+    return !state.isRunning && !state.activeMicroBreak && this.uiState.openModal !== "completion";
+  }
+
+  private scheduleIdleReminder(): void {
+    this.idleReminderTimeoutId = window.setTimeout(() => {
+      this.idleReminderTimeoutId = null;
+
+      if (!this.shouldPlayIdleReminder()) {
+        return;
+      }
+
+      this.audioService.playIdleReminder();
+      this.scheduleIdleReminder();
+    }, IDLE_REMINDER_DELAY_MS);
+  }
+
+  private stopIdleReminder(): void {
+    if (this.idleReminderTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(this.idleReminderTimeoutId);
+    this.idleReminderTimeoutId = null;
   }
 
   private syncDailyState(): boolean {

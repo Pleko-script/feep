@@ -41,6 +41,13 @@ export class AudioService {
     ]);
   }
 
+  public playIdleReminder(): void {
+    this.playToneSequence([
+      { frequency: 740, duration: 0.08, gap: 0.04, volume: 0.035, type: "sine" },
+      { frequency: 880, duration: 0.1, volume: 0.04, type: "sine" },
+    ]);
+  }
+
   public startCompletionAlarmLoop(): number | null {
     if (!this.getAudioContext()) {
       return null;
